@@ -1,0 +1,194 @@
+@tailwind base;
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/assets/fonts/SpaceGrotesk.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "General Sans";
+  src: url("/assets/fonts/GeneralSans.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-display: Space Grotesk;
+    --font-body: General Sans;
+    --font-mono: Space Grotesk;
+    --radius: 0.625rem;
+
+    --background: 0.99 0 0;
+    --foreground: 0.15 0 0;
+    --card: 1.0 0 0;
+    --card-foreground: 0.15 0 0;
+    --popover: 1.0 0 0;
+    --popover-foreground: 0.15 0 0;
+
+    --primary: 0.35 0 0;
+    --primary-foreground: 0.98 0 0;
+
+    --secondary: 0.95 0 0;
+    --secondary-foreground: 0.25 0 0;
+    --muted: 0.95 0 0;
+    --muted-foreground: 0.5 0 0;
+
+    --accent: 0.35 0 0;
+    --accent-foreground: 0.98 0 0;
+
+    --destructive: 0.55 0.22 25;
+    --destructive-foreground: 0.98 0 0;
+
+    --border: 0.9 0 0;
+    --input: 0.9 0 0;
+    --ring: 0.35 0 0;
+
+    --chart-1: 0.65 0.22 40;
+    --chart-2: 0.6 0.12 185;
+    --chart-3: 0.4 0.07 227;
+    --chart-4: 0.83 0.19 84;
+    --chart-5: 0.77 0.19 70;
+
+    --sidebar: 0.98 0 0;
+    --sidebar-foreground: 0.15 0 0;
+    --sidebar-primary: 0.35 0 0;
+    --sidebar-primary-foreground: 0.98 0 0;
+    --sidebar-accent: 0.95 0 0;
+    --sidebar-accent-foreground: 0.25 0 0;
+    --sidebar-border: 0.9 0 0;
+    --sidebar-ring: 0.35 0 0;
+  }
+
+  .dark {
+    --background: 0.07 0.015 265;
+    --foreground: 0.92 0.02 260;
+    --card: 0.1 0.015 265;
+    --card-foreground: 0.92 0.02 260;
+    --popover: 0.12 0.015 265;
+    --popover-foreground: 0.95 0.01 260;
+
+    --primary: 0.6 0.2 200;
+    --primary-foreground: 0.95 0.02 260;
+
+    --secondary: 0.5 0.18 40;
+    --secondary-foreground: 0.95 0.02 260;
+    --muted: 0.2 0.01 270;
+    --muted-foreground: 0.65 0.02 260;
+
+    --accent: 0.62 0.22 200;
+    --accent-foreground: 0.08 0.01 270;
+
+    --destructive: 0.52 0.19 25;
+    --destructive-foreground: 0.98 0.01 260;
+
+    --border: 0.18 0.02 270;
+    --input: 0.15 0.02 270;
+    --ring: 0.62 0.22 200;
+
+    --chart-1: 0.62 0.22 200;
+    --chart-2: 0.5 0.18 40;
+    --chart-3: 0.48 0.18 120;
+    --chart-4: 0.52 0.19 25;
+    --chart-5: 0.65 0.15 140;
+
+    --sidebar: 0.12 0.02 270;
+    --sidebar-foreground: 0.95 0.02 260;
+    --sidebar-primary: 0.62 0.22 200;
+    --sidebar-primary-foreground: 0.08 0.01 270;
+    --sidebar-accent: 0.2 0.01 270;
+    --sidebar-accent-foreground: 0.85 0.02 260;
+    --sidebar-border: 0.18 0.02 270;
+    --sidebar-ring: 0.62 0.22 200;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+}
+
+@layer utilities {
+  @keyframes signal-bar-anim {
+    from {
+      transform: scaleY(0.5);
+      opacity: 0.6;
+    }
+    to {
+      transform: scaleY(1.5);
+      opacity: 1.0;
+    }
+  }
+
+  @keyframes glow-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 20px 0 rgba(0, 212, 255, 0.6), 0 0 40px 0
+        rgba(0, 212, 255, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 30px 0 rgba(0, 212, 255, 0.8), 0 0 60px 0
+        rgba(0, 212, 255, 0.5);
+    }
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 20px 0 rgba(0, 212, 255, 0.6), 0 0 40px 0
+      rgba(0, 212, 255, 0.3);
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 15px 0 rgba(255, 215, 0, 0.5), 0 0 30px 0
+      rgba(255, 215, 0, 0.2);
+  }
+
+  .badge-live {
+    display: inline-block;
+    background: oklch(0.48 0.18 120);
+    color: oklch(0.95 0.02 260);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .badge-off {
+    display: inline-block;
+    background: oklch(0.52 0.19 25);
+    color: oklch(0.95 0.02 260);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 3s ease-in-out infinite;
+  }
+
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}

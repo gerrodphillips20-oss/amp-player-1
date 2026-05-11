@@ -1,0 +1,25 @@
+{
+  "overview": "Amp Player 1 is a full-featured car audio system web app built by Gerrod — Engineer, Producer, Designer. It features dual amplifiers, real audio playback from device files, 30 module panels, processor characteristics, and a full signal chain powered by the Thunder Battery system.",
+  "features": [
+    "Real audio file playback with device file picker",
+    "Dual audio contexts powering Bass Amp and Highs/Mids Amp",
+    "30 interactive module panels including Chip Commander, Processor Characteristics, Crossover, Smart Range Limiter",
+    "Thunder Battery 2500W system with 5W external display",
+    "Processor Characteristics converting power to punch, depth, weight, clarity, bass drop, and bass note switching",
+    "Story Button with end-credits scrolling and speech synthesis telling the story of everything Gerrod designed",
+    "Volume range 1-700 with Smart Range Limiter (20 smart chips, 30 filters)",
+    "All 16 gains locked at 0.0 — enforced in code, no exceptions",
+    "Browser to Fuse to Milliwatts handshake sequence",
+    "4 gauge wiring throughout, dark navy theme, responsive mobile layout"
+  ],
+  "category": "entertainment",
+  "tags": [
+    "audio",
+    "car-audio",
+    "amplifier",
+    "music-player",
+    "signal-processing",
+    "web-audio-api"
+  ],
+  "last_updated": "2026-05-09T13:16:46.339Z"
+}
