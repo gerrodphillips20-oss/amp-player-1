@@ -31,13 +31,12 @@ Gerrod simulated this digitally.
 Same result. No distortion. No struggle.
 He solved the power supply problem before it existed.
 
-DUAL AMP SYSTEM — SRS 2022
-Two amplifiers. Independent audio contexts.
-Bass Amp: PWM digital. 92 to 95 percent efficiency.
-10Hz to 50kHz. THD 0.01 percent.
-Highs and Mids Amp: clarity and presence.
-Both wired with 4 gauge throughout.
-Both live. Both real.
+HELIX DSP AMP — VIRTUAL DIGITAL ANALOG SIMULATION
+One unified amp. One audio context.
+Virtual Digital Analog Simulation — not tube.
+Full frequency range. THD 0.01 percent.
+Bass, mids, and highs all routed through the Helix.
+One amp. One brain. 1,720,000 watts of smart characteristics.
 
 THE CROSSOVER
 Gerrod didn't spec it.
@@ -48,9 +47,9 @@ Bass stays bass. Highs stay highs.
 
 THE SMART RANGE LIMITER
 One limiter. Only one.
-Volume range: 1 to 700.
+Volume range: 1 to 100.
 20 smart chips. 30 filters.
-Active from 100 to 700.
+Active from 1 to 100.
 It studies the notes as they play.
 And fixes them in real time.
 
@@ -223,7 +222,7 @@ export default function StoryCredits({ onClose }: StoryCreditsProps) {
               line === "THE THUNDER BATTERY" ||
               line === "THE PROCESSOR CHARACTERISTICS" ||
               line === "THE 8 OHM TO 1 OHM MIMICK" ||
-              line === "DUAL AMP SYSTEM — SRS 2022" ||
+              line === "HELIX DSP AMP — VIRTUAL DIGITAL ANALOG SIMULATION" ||
               line === "THE CROSSOVER" ||
               line === "THE SMART RANGE LIMITER" ||
               line === "THE CHIP COMMANDER" ||

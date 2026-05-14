@@ -41,14 +41,34 @@ export default function SmartRangeLimiter() {
           border: "1px solid rgba(0,212,255,0.25)",
         }}
       >
+        <div className="flex items-center gap-2 flex-wrap">
+          <div
+            className="text-xs font-bold uppercase tracking-widest"
+            style={{ color: "#00d4ff" }}
+          >
+            SMART RANGE LIMITER
+          </div>
+          <span
+            className="text-xs font-bold px-1.5 py-0.5 rounded uppercase"
+            style={{
+              background: "rgba(0,212,255,0.18)",
+              border: "1px solid rgba(0,212,255,0.5)",
+              color: "#00d4ff",
+              fontSize: "0.6rem",
+              letterSpacing: "0.05em",
+            }}
+          >
+            HD MONITOR: ACTIVE
+          </span>
+        </div>
         <div
-          className="text-xs font-bold uppercase tracking-widest"
-          style={{ color: "#00d4ff" }}
+          className="text-xs font-semibold"
+          style={{ color: "rgba(0,212,255,0.75)" }}
         >
-          SMART RANGE LIMITER
+          SUPERIOR HD MONITOR: BUILT IN — AGGRESSIVE
         </div>
         <div className="text-xs" style={{ color: "rgba(0,212,255,0.5)" }}>
-          GERROD’S DESIGN — 1,000W CHARACTERISTICS
+          GERROD'S DESIGN — 1,000W CHARACTERISTICS
         </div>
         <div className="text-xs" style={{ color: "rgba(0,212,255,0.4)" }}>
           Lives inside Volume + EQ + Sub Bass — direct contact
@@ -203,9 +223,9 @@ export default function SmartRangeLimiter() {
           </span>
           <span
             className="text-xs font-mono font-bold"
-            style={{ color: volume >= 500 ? "#ff9500" : "#00d4ff" }}
+            style={{ color: volume >= 80 ? "#ff9500" : "#00d4ff" }}
           >
-            {volume} / 700
+            {volume} / 100
           </span>
         </div>
         <div className="flex items-center justify-between mt-0.5">

@@ -2,32 +2,32 @@ import { useAudioEngine } from "@/hooks/useAudioEngine";
 
 export default function GainStructure() {
   const engine = useAudioEngine();
-  const bassGain = engine.bassGainValue;
-  const highsGain = engine.highsGainValue;
+  const gainKillActive = engine.gainKillActive;
   const bassRed = engine.bassCompReduction ?? 0;
   const highsRed = engine.highsCompReduction ?? 0;
 
+  // G01/G02/G04/G05/G06/G08/G13/G14 are locked at 0.0 per rule book.
+  // setBassGain / setHighsGain are NO-OPs — these are not user-controllable gains.
+  // G03/G07 show compressor gain-reduction (negative dB — pass-through reads).
+  // G09-G12/G15 are SRS/mids amps — deleted — permanently 0.0.
+  // G16 output stage = average of both comps — display only.
   const GAINS = [
-    { id: "G01", label: "BASS INPUT GAIN", value: bassGain },
-    { id: "G02", label: "BASS FILTER GAIN", value: 1.0 },
+    { id: "G01", label: "BASS INPUT GAIN", value: 0.0 },
+    { id: "G02", label: "BASS FILTER GAIN", value: 0.0 },
     { id: "G03", label: "BASS COMP GR", value: bassRed },
-    { id: "G04", label: "BASS OUTPUT GAIN", value: bassGain },
-    { id: "G05", label: "HIGHS INPUT GAIN", value: highsGain },
-    { id: "G06", label: "HIGHS FILTER GAIN", value: 1.0 },
+    { id: "G04", label: "BASS OUTPUT GAIN", value: 0.0 },
+    { id: "G05", label: "HIGHS INPUT GAIN", value: 0.0 },
+    { id: "G06", label: "HIGHS FILTER GAIN", value: 0.0 },
     { id: "G07", label: "HIGHS COMP GR", value: highsRed },
-    { id: "G08", label: "HIGHS OUTPUT GAIN", value: highsGain },
+    { id: "G08", label: "HIGHS OUTPUT GAIN", value: 0.0 },
     { id: "G09", label: "BASS AMP CH1 GAIN", value: 0.0 },
     { id: "G10", label: "BASS AMP CH2 GAIN", value: 0.0 },
     { id: "G11", label: "MIDS AMP CH1 GAIN", value: 0.0 },
     { id: "G12", label: "MIDS AMP CH2 GAIN", value: 0.0 },
-    { id: "G13", label: "MASTER L GAIN", value: bassGain },
-    { id: "G14", label: "MASTER R GAIN", value: highsGain },
+    { id: "G13", label: "MASTER L GAIN", value: 0.0 },
+    { id: "G14", label: "MASTER R GAIN", value: 0.0 },
     { id: "G15", label: "SUB AUX GAIN", value: 0.0 },
-    {
-      id: "G16",
-      label: "OUTPUT STAGE GAIN",
-      value: (bassGain + highsGain) / 2,
-    },
+    { id: "G16", label: "OUTPUT STAGE GAIN", value: (bassRed + highsRed) / 2 },
   ];
 
   return (
@@ -41,6 +41,147 @@ export default function GainStructure() {
         }}
       >
         ALL 16 GAINS • LIVE ENGINE VALUES
+      </div>
+
+      {/* Gain Kill Switch */}
+      <div
+        style={{
+          marginBottom: "12px",
+          padding: "8px",
+          border: "1px solid rgba(255,50,50,0.4)",
+          borderRadius: "6px",
+          background: gainKillActive ? "rgba(255,0,0,0.08)" : "rgba(0,0,0,0.3)",
+        }}
+        data-ocid="gain.kill_switch"
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span
+            style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#ff4444" }}
+          >
+            GAIN KILL SWITCH
+          </span>
+          <button
+            type="button"
+            data-ocid="gain.kill_switch_button"
+            onClick={() => engine.setGainKillActive(!gainKillActive)}
+            style={{
+              background: gainKillActive ? "#ff2222" : "#333",
+              color: "#fff",
+              border: "none",
+              borderRadius: "4px",
+              padding: "4px 10px",
+              fontSize: "0.65rem",
+              cursor: "pointer",
+            }}
+          >
+            {gainKillActive ? "GAIN KILL SWITCH — ALL GAINS 0.0" : "INACTIVE"}
+          </button>
+        </div>
+        <div
+          style={{
+            fontSize: "0.6rem",
+            color: gainKillActive ? "#ff6666" : "#888",
+            marginTop: "4px",
+          }}
+        >
+          {gainKillActive
+            ? "ZERO STACKING POLICY CHIP: 8 KILLABLE GAINS CONFIRMED 0.0"
+            : "Zero Stacking Policy Chip Monitoring"}
+        </div>
+      </div>
+
+      {/* Bypass Pass-Through nodes — never killed */}
+      <div
+        style={{
+          marginBottom: "12px",
+          padding: "8px",
+          border: "1px solid rgba(0,255,120,0.3)",
+          borderRadius: "6px",
+          background: "rgba(0,255,120,0.04)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "0.6rem",
+            fontWeight: "bold",
+            color: "#00e87a",
+            marginBottom: "6px",
+          }}
+        >
+          BYPASS PASS-THROUGH NODES — NEVER KILLED
+        </div>
+        <div className="grid grid-cols-2 gap-1">
+          <div
+            className="flex items-center justify-between px-2 py-1.5 rounded"
+            style={{
+              background: "rgba(0,20,10,0.8)",
+              border: "1px solid rgba(0,255,120,0.2)",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  color: "#00e87a",
+                  fontSize: "0.6rem",
+                  fontWeight: "bold",
+                }}
+              >
+                VOLUME
+              </div>
+              <div style={{ color: "#00e87a", fontSize: "0.55rem" }}>
+                VOLUME NODE — BYPASS
+              </div>
+            </div>
+            <span
+              style={{
+                color: "#00e87a",
+                fontSize: "0.7rem",
+                fontWeight: "bold",
+                fontFamily: "monospace",
+              }}
+            >
+              PASS
+            </span>
+          </div>
+          <div
+            className="flex items-center justify-between px-2 py-1.5 rounded"
+            style={{
+              background: "rgba(0,20,10,0.8)",
+              border: "1px solid rgba(0,255,120,0.2)",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  color: "#4dd0ff",
+                  fontSize: "0.6rem",
+                  fontWeight: "bold",
+                }}
+              >
+                MASTER
+              </div>
+              <div style={{ color: "#4dd0ff", fontSize: "0.55rem" }}>
+                CEILING — FIXED 1.0
+              </div>
+            </div>
+            <span
+              style={{
+                color: "#4dd0ff",
+                fontSize: "0.7rem",
+                fontWeight: "bold",
+                fontFamily: "monospace",
+              }}
+            >
+              1.00
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-1">

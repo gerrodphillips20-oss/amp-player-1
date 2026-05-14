@@ -89,10 +89,75 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface backendInterface {
+export interface Settings {
+    canisterPunch: number;
+    bassRestoration: number;
+    bassOutputLevel: number;
+    processorMimic120dB: number;
+    volume: bigint;
+    helixActive: boolean;
+    canisterBottom: number;
+    protectionCleaning: number;
+    protectionDistortion: number;
+    eqBands: Array<number>;
+    subLevel: number;
+    gainKillActive: boolean;
+    protectionClipping: number;
+    lowEndBoosterEnabled: boolean;
 }
+export interface backendInterface {
+    clearSettings(): Promise<void>;
+    loadSettings(): Promise<Settings | null>;
+    saveSettings(settings: Settings): Promise<void>;
+}
+import type { Settings as _Settings } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
+    async clearSettings(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.clearSettings();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.clearSettings();
+            return result;
+        }
+    }
+    async loadSettings(): Promise<Settings | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.loadSettings();
+                return from_candid_opt_n1(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.loadSettings();
+            return from_candid_opt_n1(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async saveSettings(arg0: Settings): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.saveSettings(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.saveSettings(arg0);
+            return result;
+        }
+    }
+}
+function from_candid_opt_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Settings]): Settings | null {
+    return value.length === 0 ? null : value[0];
 }
 export interface CreateActorOptions {
     agent?: Agent;

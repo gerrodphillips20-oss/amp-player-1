@@ -1,2 +1,22 @@
+type Settings = 
+ record {
+   bassOutputLevel: float64;
+   bassRestoration: float64;
+   canisterBottom: float64;
+   canisterPunch: float64;
+   eqBands: vec float64;
+   gainKillActive: bool;
+   helixActive: bool;
+   lowEndBoosterEnabled: bool;
+   processorMimic120dB: float64;
+   protectionCleaning: float64;
+   protectionClipping: float64;
+   protectionDistortion: float64;
+   subLevel: float64;
+   volume: nat;
+ };
 service : {
+  clearSettings: () -> ();
+  loadSettings: () -> (opt Settings) query;
+  saveSettings: (settings: Settings) -> ();
 }

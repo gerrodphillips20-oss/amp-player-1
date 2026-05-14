@@ -1,6 +1,33 @@
 import { useAudioEngine } from "@/hooks/useAudioEngine";
 import { useState } from "react";
 
+const HD_BADGE = (
+  <span
+    style={{
+      background: "rgba(0,0,0,0.5)",
+      color: "#00d4ff",
+      border: "1px solid rgba(0,212,255,0.4)",
+      fontSize: "0.55rem",
+      padding: "1px 4px",
+      borderRadius: "3px",
+      marginLeft: "4px",
+      fontWeight: "bold",
+    }}
+  >
+    HD
+  </span>
+);
+
+const hdMonitorProcess = (rawValue: number, sliderType: string): number => {
+  let processed = rawValue;
+  if (rawValue < 10) processed = rawValue * 1.2;
+  else if (rawValue > 80) processed = Math.min(rawValue * 0.95, 100);
+  console.log(
+    `[Superior HD Monitor][${sliderType}] Input: ${rawValue.toFixed(2)}, Processed: ${processed.toFixed(2)}`,
+  );
+  return processed;
+};
+
 export default function SubwooferControl() {
   const engine = useAudioEngine();
   // Initialize level from engine state (100 = full = 1.0 subGainNode)
@@ -36,10 +63,10 @@ export default function SubwooferControl() {
       >
         <div className="flex items-center justify-between mb-1">
           <span
-            className="text-xs font-bold uppercase tracking-widest"
+            className="text-xs font-bold uppercase tracking-widest flex items-center"
             style={{ color: "rgba(0,212,255,0.8)" }}
           >
-            SUB LEVEL
+            SUB LEVEL{HD_BADGE}
           </span>
           <span
             className="text-xs font-mono font-bold"
@@ -54,9 +81,13 @@ export default function SubwooferControl() {
           min={0}
           max={100}
           value={level}
-          onChange={(e) => handleLevel(Number(e.target.value))}
+          onChange={(e) =>
+            handleLevel(hdMonitorProcess(Number(e.target.value), "sub-level"))
+          }
           className="w-full"
-          style={{ accentColor: "#00d4ff" }}
+          style={
+            { maxWidth: "180px", accentColor: "#00d4ff" } as React.CSSProperties
+          }
         />
       </div>
 

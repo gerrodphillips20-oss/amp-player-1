@@ -717,6 +717,9 @@ video {
 .top-0\.5 {
   top: 0.125rem;
 }
+.top-1 {
+  top: 0.25rem;
+}
 .top-1\.5 {
   top: 0.375rem;
 }
@@ -798,6 +801,9 @@ video {
 .mb-1 {
   margin-bottom: 0.25rem;
 }
+.mb-1\.5 {
+  margin-bottom: 0.375rem;
+}
 .mb-2 {
   margin-bottom: 0.5rem;
 }
@@ -851,6 +857,9 @@ video {
 }
 .inline-block {
   display: inline-block;
+}
+.inline {
+  display: inline;
 }
 .flex {
   display: flex;
@@ -1325,6 +1334,11 @@ video {
 }
 .gap-y-0\.5 {
   row-gap: 0.125rem;
+}
+.space-y-0 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0px * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0px * var(--tw-space-y-reverse));
 }
 .space-y-0\.5 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-y-reverse: 0;
@@ -2037,8 +2051,14 @@ video {
   --tw-enter-translate-x: initial;
   --tw-enter-translate-y: initial;
 }
+.fade-in {
+  --tw-enter-opacity: 0;
+}
 .fade-in-0 {
   --tw-enter-opacity: 0;
+}
+.fade-out {
+  --tw-exit-opacity: 0;
 }
 .zoom-in-95 {
   --tw-enter-scale: .95;
@@ -2072,6 +2092,9 @@ video {
 }
 .running {
   animation-play-state: running;
+}
+.paused {
+  animation-play-state: paused;
 }
 @keyframes signal-bar-anim {
     from {

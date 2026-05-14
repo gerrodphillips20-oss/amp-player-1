@@ -1,4 +1,22 @@
 // Version: 1.0.0
+type Settings__725970704 = Settings__831483091;
+type Settings__831483091 =
+  {
+    bassOutputLevel : Float;
+    bassRestoration : Float;
+    canisterBottom : Float;
+    canisterPunch : Float;
+    eqBands : [Float];
+    gainKillActive : Bool;
+    helixActive : Bool;
+    lowEndBoosterEnabled : Bool;
+    processorMimic120dB : Float;
+    protectionCleaning : Float;
+    protectionClipping : Float;
+    protectionDistortion : Float;
+    subLevel : Float;
+    volume : Nat
+  };
 actor {
-  
+  stable state : {var settings : ?Settings__725970704}
 };

@@ -48,6 +48,40 @@ export default function PowerManagement() {
         </div>
       </div>
 
+      {/* Thunder Battery Power Chain */}
+      <div
+        className="p-3 rounded space-y-1.5 mb-1"
+        style={{
+          background: "rgba(0,0,0,0.4)",
+          border: "1px solid rgba(255,215,0,0.3)",
+        }}
+      >
+        <div
+          className="text-xs font-bold uppercase tracking-widest"
+          style={{ color: "#ffd700" }}
+        >
+          THUNDER BATTERY POWER CHAIN
+        </div>
+        <div
+          className="text-xs font-mono font-bold"
+          style={{ color: "#00ff88" }}
+        >
+          688 RUNS × 2,500W = 1,720,000W CHARACTERISTICS
+        </div>
+        <div
+          className="text-xs font-mono"
+          style={{ color: "rgba(0,212,255,0.7)" }}
+        >
+          344,000 BATTERIES | 688 FUSES | 9V × 5W EACH
+        </div>
+        <div
+          className="text-xs font-mono"
+          style={{ color: "rgba(0,255,136,0.7)" }}
+        >
+          CHARACTERISTICS POWER BEHAVIOR MIMIC → HELIX AMP
+        </div>
+      </div>
+
       {[
         ["THUNDER BATTERY", "500×9V = 2,500W", "#00ff88"],
         ["TOTAL CAPACITY", "2,500W", "#ffd700"],

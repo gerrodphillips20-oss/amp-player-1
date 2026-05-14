@@ -10,6 +10,33 @@ import { useCallback, useRef, useState } from "react";
  * The canister wet path activates ONLY when the hold button is pressed.
  */
 
+const HD_BADGE = (
+  <span
+    style={{
+      background: "rgba(0,0,0,0.5)",
+      color: "#00d4ff",
+      border: "1px solid rgba(0,212,255,0.4)",
+      fontSize: "0.55rem",
+      padding: "1px 4px",
+      borderRadius: "3px",
+      marginLeft: "4px",
+      fontWeight: "bold",
+    }}
+  >
+    HD
+  </span>
+);
+
+const hdMonitorProcess = (rawValue: number, sliderType: string): number => {
+  let processed = rawValue;
+  if (rawValue < 10) processed = rawValue * 1.2;
+  else if (rawValue > 80) processed = Math.min(rawValue * 0.95, 100);
+  console.log(
+    `[Superior HD Monitor][${sliderType}] Input: ${rawValue.toFixed(2)}, Processed: ${processed.toFixed(2)}`,
+  );
+  return processed;
+};
+
 export default function Canister() {
   const engine = useAudioEngine();
   const [isHolding, setIsHolding] = useState(false);
@@ -125,7 +152,9 @@ export default function Canister() {
               className="text-xs font-bold uppercase tracking-widest"
               style={{ color: "#ff6b35" }}
             >
-              SLIDER 1: 14-40Hz BOTTOM NOTE
+              <span className="flex items-center">
+                SLIDER 1: 14-40Hz BOTTOM NOTE{HD_BADGE}
+              </span>
             </div>
             <div className="text-xs" style={{ color: "rgba(255,107,53,0.5)" }}>
               Bottom note lane boost (F1 19Hz + F2 40Hz)
@@ -146,11 +175,21 @@ export default function Canister() {
           step={1}
           value={bottomBoost}
           disabled={!isActive}
-          onChange={(e) =>
-            engine.setCanisterBottomBoost(Number(e.target.value))
-          }
+          onChange={(e) => {
+            const processed = hdMonitorProcess(
+              Number(e.target.value),
+              "canister-bottom",
+            );
+            engine.setCanisterBottomBoost(processed);
+          }}
           className="w-full"
-          style={{ accentColor: "#ff6b35", opacity: isActive ? 1 : 0.4 }}
+          style={
+            {
+              maxWidth: "180px",
+              accentColor: "#ff6b35",
+              opacity: isActive ? 1 : 0.4,
+            } as React.CSSProperties
+          }
         />
         <div className="flex justify-between">
           <span className="text-xs" style={{ color: "rgba(255,107,53,0.3)" }}>
@@ -178,7 +217,9 @@ export default function Canister() {
               className="text-xs font-bold uppercase tracking-widest"
               style={{ color: "#00d4ff" }}
             >
-              SLIDER 2: 14-80Hz PUNCH
+              <span className="flex items-center">
+                SLIDER 2: 14-80Hz PUNCH{HD_BADGE}
+              </span>
             </div>
             <div className="text-xs" style={{ color: "rgba(0,212,255,0.5)" }}>
               Punch lane boost (F3 80Hz peaking)
@@ -199,9 +240,21 @@ export default function Canister() {
           step={1}
           value={punchBoost}
           disabled={!isActive}
-          onChange={(e) => engine.setCanisterPunchBoost(Number(e.target.value))}
+          onChange={(e) => {
+            const processed = hdMonitorProcess(
+              Number(e.target.value),
+              "canister-punch",
+            );
+            engine.setCanisterPunchBoost(processed);
+          }}
           className="w-full"
-          style={{ accentColor: "#00d4ff", opacity: isActive ? 1 : 0.4 }}
+          style={
+            {
+              maxWidth: "180px",
+              accentColor: "#00d4ff",
+              opacity: isActive ? 1 : 0.4,
+            } as React.CSSProperties
+          }
         />
         <div className="flex justify-between">
           <span className="text-xs" style={{ color: "rgba(0,212,255,0.3)" }}>

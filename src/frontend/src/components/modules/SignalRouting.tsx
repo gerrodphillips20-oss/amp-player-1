@@ -5,7 +5,7 @@ export default function SignalRouting() {
   const steps = [
     { label: "FILE INPUT", color: "#ffd700", arrow: true },
     {
-      label: `AUDIO CONTEXT ×2 (${engine.bassContextState.toUpperCase()} / ${engine.highsContextState.toUpperCase()})`,
+      label: `AUDIO CONTEXT — ${engine.bassContextState.toUpperCase()}`,
       color: "#00d4ff",
       arrow: true,
     },
@@ -20,7 +20,7 @@ export default function SignalRouting() {
       arrow: true,
     },
     {
-      label: `SMART RANGE LIMITER (VOL ${engine.volume}/700)`,
+      label: `SMART RANGE LIMITER (VOL ${engine.volume}/100)`,
       color: "#00ff88",
       arrow: true,
     },
@@ -29,8 +29,11 @@ export default function SignalRouting() {
       color: "#00ff88",
       arrow: true,
     },
-    { label: "BASS AMP — SRS 2022", color: "#ffd700", arrow: true },
-    { label: "MIDS AMP — SRS 2022", color: "#ffd700", arrow: true },
+    {
+      label: "HELIX DSP AMP — VIRTUAL DIGITAL ANALOG SIMULATION",
+      color: "#ffd700",
+      arrow: true,
+    },
     { label: "SPEAKERS OUTPUT", color: "#00ff88", arrow: false },
   ];
 
@@ -73,7 +76,7 @@ export default function SignalRouting() {
         className="mt-3 text-xs font-mono"
         style={{ color: "rgba(0,212,255,0.4)" }}
       >
-        NO WAVESHAPER • NO PREAMP • NO BASS STACKING • GAINS LOCKED 1.0
+        NO WAVESHAPER • NO PREAMP • NO BASS STACKING • GAINS LOCKED 0.0
       </div>
     </div>
   );

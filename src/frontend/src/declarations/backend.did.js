@@ -8,10 +8,54 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const idlService = IDL.Service({});
+export const Settings = IDL.Record({
+  'canisterPunch' : IDL.Float64,
+  'bassRestoration' : IDL.Float64,
+  'bassOutputLevel' : IDL.Float64,
+  'processorMimic120dB' : IDL.Float64,
+  'volume' : IDL.Nat,
+  'helixActive' : IDL.Bool,
+  'canisterBottom' : IDL.Float64,
+  'protectionCleaning' : IDL.Float64,
+  'protectionDistortion' : IDL.Float64,
+  'eqBands' : IDL.Vec(IDL.Float64),
+  'subLevel' : IDL.Float64,
+  'gainKillActive' : IDL.Bool,
+  'protectionClipping' : IDL.Float64,
+  'lowEndBoosterEnabled' : IDL.Bool,
+});
+
+export const idlService = IDL.Service({
+  'clearSettings' : IDL.Func([], [], []),
+  'loadSettings' : IDL.Func([], [IDL.Opt(Settings)], ['query']),
+  'saveSettings' : IDL.Func([Settings], [], []),
+});
 
 export const idlInitArgs = [];
 
-export const idlFactory = ({ IDL }) => { return IDL.Service({}); };
+export const idlFactory = ({ IDL }) => {
+  const Settings = IDL.Record({
+    'canisterPunch' : IDL.Float64,
+    'bassRestoration' : IDL.Float64,
+    'bassOutputLevel' : IDL.Float64,
+    'processorMimic120dB' : IDL.Float64,
+    'volume' : IDL.Nat,
+    'helixActive' : IDL.Bool,
+    'canisterBottom' : IDL.Float64,
+    'protectionCleaning' : IDL.Float64,
+    'protectionDistortion' : IDL.Float64,
+    'eqBands' : IDL.Vec(IDL.Float64),
+    'subLevel' : IDL.Float64,
+    'gainKillActive' : IDL.Bool,
+    'protectionClipping' : IDL.Float64,
+    'lowEndBoosterEnabled' : IDL.Bool,
+  });
+  
+  return IDL.Service({
+    'clearSettings' : IDL.Func([], [], []),
+    'loadSettings' : IDL.Func([], [IDL.Opt(Settings)], ['query']),
+    'saveSettings' : IDL.Func([Settings], [], []),
+  });
+};
 
 export const init = ({ IDL }) => { return []; };

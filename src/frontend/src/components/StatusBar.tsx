@@ -16,6 +16,30 @@ export default function StatusBar() {
       }}
       data-ocid="status_bar"
     >
+      {/* Amp name */}
+      <span
+        className="inline-block px-3 py-1 rounded text-xs font-bold uppercase tracking-widest"
+        style={{
+          background: "rgba(0,212,255,0.15)",
+          border: "1px solid rgba(0,212,255,0.4)",
+          color: "#00d4ff",
+        }}
+        data-ocid="status.amp_name_tag"
+      >
+        HELIX DSP
+      </span>
+      <span
+        className="inline-block px-3 py-1 rounded text-xs font-bold uppercase tracking-widest"
+        style={{
+          background: "rgba(0,255,136,0.1)",
+          border: "1px solid rgba(0,255,136,0.3)",
+          color: "#00ff88",
+        }}
+        data-ocid="status.vda_tag"
+      >
+        VDA SIMULATION
+      </span>
+
       {/* Commander */}
       <div data-ocid="status.commander_tag">
         {engine.isPlaying ? (
@@ -31,6 +55,15 @@ export default function StatusBar() {
           <span className="badge-live">● AUDIO CTX RUNNING</span>
         ) : (
           <span className="badge-off">● AUDIO CTX SUSPENDED</span>
+        )}
+      </div>
+
+      {/* Thread B status */}
+      <div data-ocid="status.thread_b_tag">
+        {engine.intelligenceLayer?.threadBActive ? (
+          <span className="badge-live">● THREAD B ACTIVE</span>
+        ) : (
+          <span className="badge-off">● THREAD B STANDBY</span>
         )}
       </div>
 
@@ -95,7 +128,7 @@ export default function StatusBar() {
         className="ml-auto text-xs font-mono"
         style={{ color: "rgba(0,212,255,0.4)" }}
       >
-        5W EXT • 2× AUDIO CTX • 4 ENGINES
+        5W EXT • 1× HELIX CTX • 4 ENGINES
       </span>
       <a
         href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}

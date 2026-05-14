@@ -1,25 +1,26 @@
 {
-  "overview": "Amp Player 1 is a full-featured car audio system web app built by Gerrod — Engineer, Producer, Designer. It features dual amplifiers, real audio playback from device files, 30 module panels, processor characteristics, and a full signal chain powered by the Thunder Battery system.",
+  "overview": "Amp Player 1 (ASO-V3) is a next-generation modular audio processing app that simulates a high-end multi-amp car audio system with the Helix DSP as a unified Virtual Digital Analog Simulation amp. Features a split-thread architecture for uninterrupted playback, 25 on-device smart chips with learning behaviors, Thunder Battery characteristics power chain, Bluetooth speaker scanning, and a full rule book enforcement system.",
   "features": [
-    "Real audio file playback with device file picker",
-    "Dual audio contexts powering Bass Amp and Highs/Mids Amp",
-    "30 interactive module panels including Chip Commander, Processor Characteristics, Crossover, Smart Range Limiter",
-    "Thunder Battery 2500W system with 5W external display",
-    "Processor Characteristics converting power to punch, depth, weight, clarity, bass drop, and bass note switching",
-    "Story Button with end-credits scrolling and speech synthesis telling the story of everything Gerrod designed",
-    "Volume range 1-700 with Smart Range Limiter (20 smart chips, 30 filters)",
-    "All 16 gains locked at 0.0 — enforced in code, no exceptions",
-    "Browser to Fuse to Milliwatts handshake sequence",
-    "4 gauge wiring throughout, dark navy theme, responsive mobile layout"
+    "Single unified Helix DSP amp with Virtual Digital Analog Simulation",
+    "Split-thread architecture: Thread A (isolated playback) + Thread B (25 smart chips in Web Worker)",
+    "1,720,000W characteristics power via Thunder Battery chain (688 runs)",
+    "Bluetooth Speaker Scanner Chip — reads watts and ohms from connected speaker",
+    "Zero Stacking Policy Chip — independent rAF monitor, kills violations instantly",
+    "Superior HD Monitor built inside every bass slider, distortion slider, and Limiter",
+    "Gain Kill Switch — cuts all gains to 0.0 simultaneously",
+    "EQ with 14-50Hz and 14-80Hz bass sliders",
+    "Real backend save system — all settings persist across sessions",
+    "Volume range exactly 1-100, all bass band sliders shortened"
   ],
-  "category": "entertainment",
+  "category": "audio",
   "tags": [
     "audio",
+    "dsp",
+    "amp",
     "car-audio",
-    "amplifier",
-    "music-player",
     "signal-processing",
-    "web-audio-api"
+    "bass",
+    "equalizer"
   ],
-  "last_updated": "2026-05-09T13:16:46.339Z"
+  "last_updated": "2026-05-13T15:46:07.660Z"
 }

@@ -1,6 +1,33 @@
 import { useAudioEngine } from "@/hooks/useAudioEngine";
 import { useCallback, useRef } from "react";
 
+const HD_BADGE = (
+  <span
+    style={{
+      background: "rgba(0,0,0,0.5)",
+      color: "#00d4ff",
+      border: "1px solid rgba(0,212,255,0.4)",
+      fontSize: "0.55rem",
+      padding: "1px 4px",
+      borderRadius: "3px",
+      marginLeft: "4px",
+      fontWeight: "bold",
+    }}
+  >
+    HD
+  </span>
+);
+
+const hdMonitorProcess = (rawValue: number, sliderType: string): number => {
+  let processed = rawValue;
+  if (rawValue < 10) processed = rawValue * 1.2;
+  else if (rawValue > 80) processed = Math.min(rawValue * 0.95, 100);
+  console.log(
+    `[Superior HD Monitor][${sliderType}] Input: ${rawValue.toFixed(2)}, Processed: ${processed.toFixed(2)}`,
+  );
+  return processed;
+};
+
 const GRADE_COLORS: Record<
   string,
   { color: string; bg: string; border: string; glow: string }
@@ -43,10 +70,11 @@ function SliderRow({ label, value, onChange, ocid }: SliderRowProps) {
     <div className="space-y-1.5">
       <div className="flex justify-between items-center">
         <span
-          className="text-xs font-bold uppercase tracking-widest"
+          className="text-xs font-bold uppercase tracking-widest flex items-center"
           style={{ color: "rgba(0,212,255,0.85)" }}
         >
           {label}
+          {HD_BADGE}
         </span>
         <span
           className="text-sm font-mono font-bold px-2 py-0.5 rounded"
@@ -65,9 +93,13 @@ function SliderRow({ label, value, onChange, ocid }: SliderRowProps) {
         min={0}
         max={100}
         value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onChange={(e) =>
+          onChange(hdMonitorProcess(Number(e.target.value), ocid))
+        }
         className="w-full h-2 rounded-full appearance-none cursor-pointer"
-        style={{ accentColor: "#00d4ff" }}
+        style={
+          { maxWidth: "180px", accentColor: "#00d4ff" } as React.CSSProperties
+        }
         data-ocid={`${ocid}.slider`}
       />
       <div

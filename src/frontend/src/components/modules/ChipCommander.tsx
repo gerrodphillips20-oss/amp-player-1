@@ -262,35 +262,66 @@ export default function ChipCommander() {
         )}
       </div>
 
-      {/* ASO-V3 Amp Slot */}
+      {/* Helix DSP Amp Slot */}
       <div
         className="px-2 py-2 rounded space-y-1"
         style={{
-          background: asoV3Active ? "rgba(255,180,0,0.1)" : "rgba(0,0,0,0.3)",
+          background: asoV3Active ? "rgba(0,212,255,0.1)" : "rgba(0,0,0,0.3)",
           border: `1px solid ${
-            asoV3Active ? "rgba(255,180,0,0.4)" : "rgba(255,180,0,0.15)"
+            asoV3Active ? "rgba(0,212,255,0.4)" : "rgba(0,212,255,0.15)"
           }`,
         }}
-        data-ocid="chip_commander.aso_v3_slot"
+        data-ocid="chip_commander.helix_slot"
       >
         <div
           className="text-xs font-bold uppercase tracking-widest"
-          style={{ color: asoV3Active ? "#ffb400" : "rgba(255,180,0,0.4)" }}
+          style={{ color: asoV3Active ? "#00d4ff" : "rgba(0,212,255,0.4)" }}
         >
           {asoV3Active
-            ? `● SLOT ${asoV3Slot} — ASO-V3 SOVEREIGN LOADED`
-            : `○ SLOT ${asoV3Slot} — ASO-V3 STANDBY`}
+            ? `● SLOT ${asoV3Slot} — HELIX DSP AMP LOADED`
+            : `○ SLOT ${asoV3Slot} — HELIX DSP AMP STANDBY`}
         </div>
         <div
           className="text-xs"
           style={{
-            color: asoV3Active ? "rgba(255,180,0,0.6)" : "rgba(255,180,0,0.25)",
+            color: asoV3Active ? "rgba(0,212,255,0.6)" : "rgba(0,212,255,0.25)",
           }}
         >
           {asoV3Active
-            ? "20,000W characteristics • 4-channel active"
-            : "Activate from ASO-V3 SOVEREIGN panel"}
+            ? "1,720,000W characteristics • VDA simulation active"
+            : "Activate from ASO-V3 panel"}
         </div>
+      </div>
+
+      {/* Intelligence Layer Status */}
+      <div
+        className="px-2 py-2 rounded space-y-1"
+        style={{
+          background: "rgba(0,255,136,0.05)",
+          border: "1px solid rgba(0,255,136,0.2)",
+        }}
+        data-ocid="chip_commander.intelligence_layer"
+      >
+        <div
+          className="text-xs font-bold uppercase tracking-widest"
+          style={{ color: "#00ff88" }}
+        >
+          INTELLIGENCE LAYER — LOADED
+        </div>
+        {[
+          "25 SMART CHIPS ACTIVE — LEARNING",
+          "ZERO STACKING POLICY CHIP: INDEPENDENT — ALWAYS RUNNING",
+          "BLUETOOTH SCANNER CHIP: INDEPENDENT",
+          "1,000MB BRAIN CHIP: LOADED",
+        ].map((item) => (
+          <div
+            key={item}
+            className="text-xs font-mono flex items-center gap-1"
+            style={{ color: "rgba(0,255,136,0.8)" }}
+          >
+            <span style={{ color: "#00ff88" }}>●</span> {item}
+          </div>
+        ))}
       </div>
 
       {/* Smart Range Limiter */}

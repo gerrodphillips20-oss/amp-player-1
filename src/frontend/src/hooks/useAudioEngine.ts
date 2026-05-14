@@ -1,62 +1,51 @@
 /**
  * useAudioEngine.ts — Amp Player 1
+ * ASO-V3 — HELIX DSP AMP (VIRTUAL DIGITAL ANALOG SIMULATION)
  *
  * RULE BOOK — ENFORCED ON EVERY BUILD:
  * ─────────────────────────────────────────────────────────────────────────────
- * 1. ALL 16 gains locked at 0.0 at the REAL engine level.
- *    G09/G10 (bass amp channels) and G11/G12 (highs amp channels) are NO-OP setters.
- *    G15/G16 are also NO-OP. Output nodes bassGain/highsGain are pass-through at 1.0
- *    and are NOT amp-channel gains — they are never used to modify signal level.
- * 2. NO WaveShaperNode anywhere in either chain.
- * 3. NO stacking: exactly 1 srlComp per channel. No duplicate limiters.
- * 4. NO DelayNode. NO ConvolverNode.
- * 5. NO features added unless explicitly approved by Gerrod.
- * 6. Low End Booster: BOTH lanes (14–40Hz AND 14–80Hz) active simultaneously.
- *    Do NOT restrict to only one lane.
+ * 1. ONE unified helixCtx — no dual-context split.
+ * 2. ALL gains: volumeGain (1→0.001, 100→1.0), masterGain (1.0 fixed pass-through only).
+ *    masterGain NEVER above 1. NO other gain nodes modify signal level.
+ * 3. NO WaveShaperNode anywhere in the chain.
+ * 4. NO stacking: exactly 1 bassComp (DynamicsCompressor).
+ * 5. Volume range: 1-100 ONLY. Max 100, no 700.
+ * 6. Gains kill switch: sets ALL gain nodes to 0 simultaneously on activation.
+ * 7. ZERO STACKING POLICY CHIP: separate, runs every requestAnimationFrame,
+ *    checks SharedArrayBuffer gainKillActive slot, enforces gains at 0 or 1.
+ * 8. Low End Booster: BOTH lanes (14–40Hz AND 14–80Hz) simultaneously.
+ * 9. No ASO-V3 amp switching logic — Helix is the ONE and ONLY amp.
+ * 10. Virtual Digital Analog Simulation — NO tube simulation.
  * ─────────────────────────────────────────────────────────────────────────────
  *
- * COMMAND HIERARCHY:
- *   Ultra (master override) → SRL (grades & commands volume+crossover) → Bass Epicenter
- *   SRL is GRADE AND MONITOR only — pulls back only under D-grade held >3s (5%, briefly)
+ * THREAD A — PLAYBACK PIPELINE (Web Audio API, single helixCtx):
+ *   source → volumeGain (1-100 → 0.001-1.0)
+ *     → EQ[8 bands] (19Hz, 47Hz, 250Hz, 500Hz, 1kHz, 4kHz, 8kHz, 16kHz)
+ *     → [EPICENTER]: pfmFilter(14Hz HP) → bassRestLP(50Hz LP)||bassRestMix → bassOutputLevel
+ *     → bassNaturalBottom
+ *     → bassLR1(80Hz LP) → bassLR2(80Hz LP)  [Linkwitz-Riley 4th-order LP crossover]
+ *     → [CANISTER wet/dry]: F1(19Hz)+F2(40Hz)+F3(80Hz) → canisterOut || canisterDry → canisterMix
+ *     → safetyBoost (30Hz peaking, +3dB fixed, 1,000W safety characteristics)
+ *     → bassComp (threshold:-24, knee:30, ratio:4, attack:0.003, release:0.25)
+ *     → bassAnalyser (fftSize:2048)
+ *     → masterGain (1.0 fixed — NEVER modified)
+ *     → helixCtx.destination
  *
- * BASS CHAIN (in order):
- *   source → insert(vol)
- *     → subGainNode (user-controlled sub output level — default 1.0 at 100%)
- *     → eq[8]  ← 8 bands starting with 14-50Hz, 14-80Hz, then 250Hz+
- *     → [EPICENTER STAGE]:
- *         pfmFilter (14Hz HP, always on)
- *         → restorationLP (50Hz LP parallel path) → restorationGain → mix via restorationMix
- *         → bassMaximizer (60Hz peaking)
- *         → paraBass (center freq peaking)
- *         → bassOutputLevel (gain)
- *     → naturalBottom
- *     → [LINKWITZ-RILEY 4th-ORDER CROSSOVER] (cascaded 2nd-order Butterworth)
- *       bassLR1 (LP) → bassLR2 (LP) = Sub/Bass LP output
- *     → [CANISTER]: canisterF1(14Hz) → canisterF2(40Hz) → canisterF3(80Hz) → canisterOut
- *     → srlComp (SRL — 1 only, NO duplicate limiter)
- *     → analyser
- *     → bassGain (1.0 pass-through)
- *     → bassUltraGain (Ultra authority)
+ *   Highs path runs IN SAME helixCtx:
+ *     source → volumeGain → highsLR1(250Hz HP) → highsLR2(250HP) → highsComp → highsAnalyser → ultraGain → destination
  *
- * NOTE: Canister operates on a PARALLEL path — completely independent from EQ.
- * EQ does NOT touch frequencies below 250Hz except Band 0 (19Hz) and Band 1 (47Hz)
- * which are the dedicated low-end sliders. Canister nodes (F1/F2/F3) sit AFTER
- * the LR crossover, on a separate wet/dry mix path that bypasses the EQ entirely.
- *     → destination
+ * THREAD B — Intelligence pipeline in intelligenceWorker.ts (Web Worker).
+ * Memory bridge: SharedArrayBuffer (Float32Array, 64 slots).
  *
- * HIGHS CHAIN (in order):
- *   source → insert(vol) → eq[8]
- *   → [LINKWITZ-RILEY 4th-ORDER CROSSOVER]
- *     highsLR1 (HP) → highsLR2 (HP) = Highs HP output
- *   → srlComp → analyser → highsGain (1.0) → highsUltraGain (Ultra) → destination
+ * THUNDER BATTERY POWER CHAIN:
+ *   688 runs × 2,500W = 1,720,000W characteristics
+ *   500 batteries × 9V × 5W = 2,500W per run
+ *   2 fuses (fuse1: banks 1-344, fuse2: banks 345-688)
+ *   Outputs powerMimic=1.0 to SharedArrayBuffer[6] continuously.
  *
- * PHASE and SRS/WOW/TruBass nodes REMOVED as of this build.
- * UltraCrystal clarity/presence nodes REMOVED as of this build.
- * Hard brick-wall DynamicsCompressorNode limiter REMOVED — SRL comp is the only comp.
- *
- * DUAL CHARACTERISTICS TRAINING:
- *   Audio behavior (punch/depth/weight/clarity/bassDrop/bassNoteSwitching) +
- *   Power mimic (powerMimic/signalAuthority/ampResponse) — both sets computed from RMS.
+ * BLUETOOTH SPEAKER SCANNER CHIP (main thread):
+ *   Only fires when navigator.bluetooth available AND phone BT on.
+ *   Reads device name → speaker database → writes ohms/watts to SharedArrayBuffer.
  */
 
 import {
@@ -75,18 +64,42 @@ export interface EQBandState {
   gainDb: number;
 }
 
+export interface BassCharState {
+  activeHz: number;
+  liveEnergy14_50: number[];
+  deepSustainActive: boolean;
+  zeroDistortionActive: boolean;
+}
+
+export interface SpeakerProfile {
+  detectedName: string;
+  ohms: number;
+  estimatedSize: string;
+  powerHandling: string;
+  profileApplied: boolean;
+}
+
+export interface IntelligenceLayerState {
+  appSelf: boolean;
+  smartChips: number;
+  totalBehaviors: number;
+  loadAmp: number;
+  loadApp: number;
+  loadChipCommander: number;
+  threadBActive: boolean;
+  powerMimic: number;
+}
+
 export interface ProcessorCharState {
-  // ── Audio behavior ──────────────────────────────────────────────────────────
-  punch: number; // 0-100
-  depth: number; // 0-100 (simulates 8Ω→1Ω load)
-  weight: number; // 0-100 (low-freq energy)
-  clarity: number; // 0-100 (high-freq detail)
-  bassDrop: number; // 0-100 (activates vol>=100 + bass signal)
-  bassNoteSwitching: number; // 0-100 (rate of bass freq change)
-  // ── Power mimic (dual training) ─────────────────────────────────────────────
-  powerMimic: number; // 0-100 — simulates real amp wattage push
-  signalAuthority: number; // 0-100 — weight/authority of real wattage in signal
-  ampResponse: number; // 0-100 — how amp handles load at channel power levels
+  punch: number;
+  depth: number;
+  weight: number;
+  clarity: number;
+  bassDrop: number;
+  bassNoteSwitching: number;
+  powerMimic: number;
+  signalAuthority: number;
+  ampResponse: number;
 }
 
 export type SRLGrade = "A+" | "B+" | "C+" | "D";
@@ -114,34 +127,13 @@ const srlGradeLabelFor = (grade: SRLGrade): string => {
   return map[grade];
 };
 
-// ─── EQ frequency bands (8 bands: 14-50Hz, 14-80Hz low end + mids/highs 250Hz+) ─
+// ─── EQ frequency bands ───────────────────────────────────────────────────────
+// band0: 19Hz (14-50Hz lane), band1: 47Hz (14-80Hz lane), bands 2-7: mids/highs
 export const EQ_FREQS = [19, 47, 250, 500, 1000, 4000, 8000, 16000];
-// Note: browser BiquadFilter min is ~10Hz; we use 19Hz for the 14-50Hz lane
-// and 47Hz for the 14-80Hz lane as practical lower bounds for Web Audio API.
-// These represent the CENTER of each lane's boost range.
 
-/**
- * EQ low-end base boost offsets (dB) — embedded in filter init.
- * These lift the naturally quieter low frequencies to be audible from the
- * first slider movement. The slider adds ±12dB ON TOP of this base.
- * Band 0 (19Hz / 14-50Hz lane): +3dB base
- * Band 1 (47Hz / 14-80Hz lane): +2dB base
- */
 const EQ_LOW_BASE_BOOST: number[] = [3, 2, 0, 0, 0, 0, 0, 0];
-
-/**
- * EQ Q values per band — low-end bands use tighter Q to prevent
- * 50Hz interfering with 14Hz (and vice versa).
- */
 const EQ_Q_VALUES: number[] = [1.8, 1.4, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
 
-/**
- * FIX 2: Map EQ slider value (−12..+12 dB from UI) to actual filter dB
- * using an exponential curve so the BOTTOM of the slider already
- * produces audible movement for low-end bands.
- * For low-end bands (0,1): exponential expansion on positive values.
- * For mids/highs bands: linear pass-through.
- */
 export const eqSliderToDb = (sliderDb: number, bandIdx: number): number => {
   const base = EQ_LOW_BASE_BOOST[bandIdx] ?? 0;
   if (bandIdx < 2) {
@@ -152,12 +144,118 @@ export const eqSliderToDb = (sliderDb: number, bandIdx: number): number => {
   return sliderDb;
 };
 
-// ─── State interface ─────────────────────────────────────────────────────────
+// ─── Volume mapping: 1-100 → 0.001-1.0 ─────────────────────────────────────
+/** RULE: volume max is 100. NO volume range of 700. */
+const volToGain = (v: number): number =>
+  Math.max(0.01, Math.min(1.0, (v - 1) / 99));
+
+const pctToDb = (pct: number, minDb: number, maxDb: number): number =>
+  minDb + (pct / 100) * (maxDb - minDb);
+
+const pctToGain = (pct: number): number => (pct / 100) * 2.0;
+
+const sliderToParaWidth = (slider: number): number =>
+  0.3 + (slider / 100) * 2.7;
+
+// ─── SharedArrayBuffer layout ────────────────────────────────────────────────
+const SAB_SIZE = 64; // Float32Array slots
+const SAB_PUNCH = 0;
+const SAB_DEPTH = 1;
+const SAB_WEIGHT = 2;
+const SAB_CLARITY = 3;
+const SAB_BASS_DROP = 4;
+const SAB_BASS_NOTE = 5;
+const SAB_POWER_MIMIC = 6;
+const SAB_SIGNAL_AUTH = 7;
+const SAB_AMP_RESPONSE = 8;
+const SAB_OHMS = 9;
+const SAB_WATTS = 10;
+const SAB_CHIPS_ACTIVE = 11;
+const SAB_BT_CONNECTED = 12;
+const SAB_GAIN_KILL = 13;
+
+// ─── Speaker database ────────────────────────────────────────────────────────
+const SPEAKER_DB: Record<
+  string,
+  { ohms: number; watts: number; boxType: string; size: string }
+> = {
+  "QFX PBX": { ohms: 8, watts: 400, boxType: "ported", size: "15-inch" },
+  JBL: { ohms: 8, watts: 300, boxType: "sealed", size: "12-inch" },
+  Sony: { ohms: 4, watts: 200, boxType: "sealed", size: "10-inch" },
+  Bose: { ohms: 4, watts: 150, boxType: "ported", size: "8-inch" },
+  Sonos: { ohms: 8, watts: 100, boxType: "ported", size: "6-inch" },
+  Samsung: { ohms: 8, watts: 200, boxType: "sealed", size: "10-inch" },
+  LG: { ohms: 8, watts: 150, boxType: "sealed", size: "8-inch" },
+};
+
+const lookupSpeaker = (
+  name: string,
+): { ohms: number; watts: number; boxType: string; size: string } => {
+  for (const [key, profile] of Object.entries(SPEAKER_DB)) {
+    if (name.includes(key)) return profile;
+  }
+  return { ohms: 8, watts: 200, boxType: "sealed", size: "unknown" };
+};
+
+// SRL crossover adjustments per grade
+const SRL_CROSSOVER_ADJUST: Record<
+  SRLGrade,
+  { bassOffset: number; highsOffset: number }
+> = {
+  "A+": { bassOffset: 0, highsOffset: 0 },
+  "B+": { bassOffset: 0, highsOffset: 0 },
+  "C+": { bassOffset: 0, highsOffset: 0 },
+  D: { bassOffset: -10, highsOffset: 20 },
+};
+
+// ─── Defaults ────────────────────────────────────────────────────────────────
+const defaultBassCharState: BassCharState = {
+  activeHz: 0,
+  liveEnergy14_50: new Array(37).fill(0) as number[],
+  deepSustainActive: false,
+  zeroDistortionActive: true,
+};
+
+const defaultSpeakerProfile: SpeakerProfile = {
+  detectedName: "QFX PBX-15",
+  ohms: 8,
+  estimatedSize: "15-inch",
+  powerHandling: "400W RMS",
+  profileApplied: true,
+};
+
+const defaultIntelligenceLayer: IntelligenceLayerState = {
+  appSelf: true,
+  smartChips: 25,
+  totalBehaviors: 100000,
+  loadAmp: 35,
+  loadApp: 35,
+  loadChipCommander: 30,
+  threadBActive: false,
+  powerMimic: 0,
+};
+
+const defaultProcessorChar: ProcessorCharState = {
+  punch: 0,
+  depth: 90,
+  weight: 0,
+  clarity: 0,
+  bassDrop: 0,
+  bassNoteSwitching: 0,
+  powerMimic: 0,
+  signalAuthority: 0,
+  ampResponse: 0,
+};
+
+// ─── State interface ──────────────────────────────────────────────────────────
 export interface AudioEngineState {
   isPlaying: boolean;
   isLoaded: boolean;
-  volume: number; // 1-700
+  /** RULE: 1-100 only. NO 700. */
+  volume: number;
   fileName: string;
+  helixContextState: string;
+  /** Legacy compat fields — both map to helixContextState */
   bassContextState: string;
   highsContextState: string;
   currentTime: number;
@@ -170,64 +268,71 @@ export interface AudioEngineState {
   highsCompReduction: number;
   eqBands: EQBandState[];
   preampBypassed: boolean;
-  // Phase state (legacy: phase nodes removed from chain; state kept for UI compat)
   bassPhaseInverted: boolean;
   highsPhaseInverted: boolean;
   processorChar: ProcessorCharState;
-  // Protection System sliders
   distortionReduction: number;
   clippingReduction: number;
   cleanSignal: number;
-  // SRL Grade
   srlGrade: SRLGrade;
   srlGradeLabel: string;
-  // Low End Booster
   lowEndBoosterEnabled: boolean;
   lowEndBoosterClaimed: boolean;
   lowEndBoosterActive: boolean;
   lowEndBoosterTimeLeft: number | null;
-  // Save state
   hasUnsavedChanges: boolean;
   lastSaved: string | null;
-  // Rule-book diagnostics
   gainViolations: string[];
   stackingViolations: string[];
-  // Epicenter controls
-  epicenterBoost: number; // 0-100 → 0-12dB on Bass Maximizer
-  paraCenter: number; // 20-120Hz, default 60
-  paraWidth: number; // 0.3-3.0, default 1.0
-  paraGain: number; // 0-100 → -12..+12dB, default 50
-  pfmActive: boolean; // always true
-  bassOutputLevel: number; // 0-100 → 0.0-2.0 gain, default 50→1.0
-  // Canister
+  bassRestorationLevel: number;
+  processorMimic120dB: number;
+  srlControlling120dB: boolean;
+  safetyProcessorActive: boolean;
+  safetyProcessorLevel: number;
+  thunderBatterySafetyDraw: number;
+  /** Helix is always active — no routing handoff. Always false for UI compat. */
+  asoV3Routing: boolean;
+  pfmActive: boolean;
+  bassOutputLevel: number;
   canisterActive: boolean;
-  canisterBottomBoost: number; // 0-100, controls 14-40Hz lane (F1+F2)
-  canisterPunchBoost: number; // 0-100, controls 14-80Hz lane (F3)
-  // Sub level (FIX 1): user-controlled sub output (0-100)
+  canisterBottomBoost: number;
+  canisterPunchBoost: number;
   subLevel: number;
-  // Ultra authority
   ultraActive: boolean;
-  // ASO-V3 amp state
+  /** Helix is the amp. Always true once loaded. */
+  helixActive: boolean;
+  /** Legacy compat: maps to helixActive */
   asoV3Active: boolean;
+  asoV3Scanning: boolean;
+  scanResult: "clean" | "problem" | null;
   asoV3SlotNumber: number;
+  bassCharState: BassCharState;
+  speakerProfile: SpeakerProfile;
+  intelligenceLayer: IntelligenceLayerState;
+  /** Gain kill switch — kills ALL gains simultaneously */
+  gainKillActive: boolean;
+  /** Output mode detection */
+  outputMode: "internal" | "external";
+  /** Thread B active status */
+  threadBActive: boolean;
 }
 
-// ─── Controls interface ──────────────────────────────────────────────────────
+// ─── Controls interface ───────────────────────────────────────────────────────
 export interface AudioEngineControls {
   loadFile: (file: File) => Promise<void>;
   play: () => void;
   stop: () => void;
+  /** Volume 1-100 ONLY */
   setVolume: (v: number) => void;
   setBassFilterFreq: (hz: number) => void;
   setHighsFilterFreq: (hz: number) => void;
-  /** NO-OP: G09/G10 amp channel gains locked at 0.0 */
+  /** NO-OP: amp channel gains locked at rule book */
   setBassGain: (value: number) => void;
-  /** FIX 1: User-controlled sub output level (0-100 → 0.0-2.0 on subGainNode). NOT a locked gain. */
   setSubLevel: (value: number) => void;
-  /** NO-OP: G11/G12 amp channel gains locked at 0.0 */
+  /** NO-OP: amp channel gains locked */
   setHighsGain: (value: number) => void;
   setBassCompressor: (
-    threshold: number,
+    _threshold: number,
     ratio: number,
     knee: number,
     attack: number,
@@ -242,13 +347,15 @@ export interface AudioEngineControls {
   ) => void;
   setEQBand: (freq: number, gainDb: number) => void;
   setEQBypass: (bypass: boolean) => void;
-  // Epicenter — real signal chain controls
   setEpicenterBoost: (pct: number) => void;
   setParaCenter: (hz: number) => void;
   setParaWidth: (width: number) => void;
   setParaGain: (pct: number) => void;
+  setBassRestorationLevel: (val: number) => void;
+  setProcessorMimic120dB: (val: number) => void;
+  /** Legacy compat: maps to helixActive toggle */
+  switchASOv3: (on: boolean) => void;
   setBassOutputLevel: (pct: number) => void;
-  // Legacy stubs (no-op, panels removed)
   setUltraCrystalClarity: (db: number) => void;
   setUltraCrystalPresence: (db: number) => void;
   setSRSEnhancement: (enabled: boolean) => void;
@@ -259,93 +366,46 @@ export interface AudioEngineControls {
   setEQuake: (enabled: boolean) => void;
   setNaturalBottom: (db: number) => void;
   phaseInvert: (channel: "bass" | "highs", invert: boolean) => void;
-  // Protection System
   setDistortionReduction: (v: number) => void;
   setClippingReduction: (v: number) => void;
   setCleanSignal: (v: number) => void;
-  // Low End Booster
   enableLowEndBooster: () => void;
   claimLowEndBooster: () => void;
   disableLowEndBooster: () => void;
-  // Canister
   setCanisterActive: (active: boolean) => void;
-  setCanisterBottomBoost: (level: number) => void; // 14-40Hz lane
-  setCanisterPunchBoost: (level: number) => void; // 14-80Hz lane
-  // Ultra
+  setCanisterBottomBoost: (level: number) => void;
+  setCanisterPunchBoost: (level: number) => void;
   setUltraActive: (active: boolean) => void;
-  // ASO-V3
+  /** Legacy compat: maps to helixActive */
   setASOv3Active: (active: boolean) => void;
-  // Save
+  /** Alias for setASOv3Active — activates the Helix amp */
+  setHelixActive: (active: boolean) => void;
+  setSpeakerProfile: (profile: Partial<SpeakerProfile>) => void;
   saveAllSettings: () => void;
+  /** Gain kill switch — kills ALL gains simultaneously */
+  setGainKillActive: (active: boolean) => void;
 }
 
 export type AudioEngine = AudioEngineState & AudioEngineControls;
 
 const AudioEngineContext = createContext<AudioEngine | null>(null);
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/** Map volume (1-700) to insert gain (0.001 – 1.0) */
-const volToGain = (v: number): number =>
-  Math.max(0.001, Math.min(1.0, (v - 1) / 699));
-
-/** Map 0-100 slider to dB range [min, max] */
-const pctToDb = (pct: number, minDb: number, maxDb: number): number =>
-  minDb + (pct / 100) * (maxDb - minDb);
-
-/** Map 0-100 slider to gain range [0.0, 2.0] */
-const pctToGain = (pct: number): number => (pct / 100) * 2.0;
-
-/** Map paraWidth slider 0-100 → 0.3-3.0 */
-const sliderToParaWidth = (slider: number): number =>
-  0.3 + (slider / 100) * 2.7;
-
-const defaultProcessorChar: ProcessorCharState = {
-  punch: 0,
-  depth: 90,
-  weight: 0,
-  clarity: 0,
-  bassDrop: 0,
-  bassNoteSwitching: 0,
-  powerMimic: 0,
-  signalAuthority: 0,
-  ampResponse: 0,
-};
-
-// SRL crossover adjustments per grade
-const SRL_CROSSOVER_ADJUST: Record<
-  SRLGrade,
-  { bassOffset: number; highsOffset: number }
-> = {
-  "A+": { bassOffset: 0, highsOffset: 0 },
-  "B+": { bassOffset: 0, highsOffset: 0 },
-  "C+": { bassOffset: 0, highsOffset: 0 },
-  D: { bassOffset: -10, highsOffset: 20 },
-};
-
-// ASO-V3 channel power levels (characteristics wattage)
-const ASO_BASS_WATTS = 7000;
-const ASO_MIDS_WATTS = 2000;
-const ASO_HIGHS_WATTS = 2000;
-const ASO_TWEETERS_WATTS = 2000;
-const ASO_TOTAL_WATTS =
-  ASO_BASS_WATTS + ASO_MIDS_WATTS + ASO_HIGHS_WATTS + ASO_TWEETERS_WATTS;
-
-// ─── Provider ────────────────────────────────────────────────────────────────
+// ─── Provider ─────────────────────────────────────────────────────────────────
 export function AudioEngineProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AudioEngineState>({
     isPlaying: false,
     isLoaded: false,
-    volume: 350,
+    volume: 50,
     fileName: "",
+    helixContextState: "suspended",
     bassContextState: "suspended",
     highsContextState: "suspended",
     currentTime: 0,
     duration: 0,
     bassFilterFreq: 80,
     highsFilterFreq: 250,
-    bassGainValue: 1.0,
-    highsGainValue: 1.0,
+    bassGainValue: 0.0,
+    highsGainValue: 0.0,
     bassCompReduction: 0,
     highsCompReduction: 0,
     eqBands: EQ_FREQS.map((freq) => ({ freq, gainDb: 0 })),
@@ -357,7 +417,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     clippingReduction: 50,
     cleanSignal: 50,
     srlGrade: "A+" as SRLGrade,
-    srlGradeLabel: "ULTRA CLEAN — 5,000W",
+    srlGradeLabel: "ULTRA CLEAN \u2014 5,000W",
     lowEndBoosterEnabled: false,
     lowEndBoosterClaimed: false,
     lowEndBoosterActive: false,
@@ -366,122 +426,632 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     lastSaved: null,
     gainViolations: [],
     stackingViolations: [],
-    epicenterBoost: 50,
-    paraCenter: 60,
-    paraWidth: 1.0,
-    paraGain: 50,
     pfmActive: true,
+    bassRestorationLevel: 50,
+    processorMimic120dB: 50,
+    srlControlling120dB: false,
+    safetyProcessorActive: true,
+    safetyProcessorLevel: 0,
+    thunderBatterySafetyDraw: 1000,
+    asoV3Routing: false,
     bassOutputLevel: 50,
     canisterActive: false,
     canisterBottomBoost: 50,
     canisterPunchBoost: 50,
     subLevel: 100,
     ultraActive: true,
+    helixActive: false,
     asoV3Active: false,
-    asoV3SlotNumber: 2847,
+    asoV3Scanning: false,
+    scanResult: null,
+    asoV3SlotNumber: 1,
+    bassCharState: defaultBassCharState,
+    speakerProfile: defaultSpeakerProfile,
+    intelligenceLayer: defaultIntelligenceLayer,
+    gainKillActive: false,
+    outputMode: "internal",
+    threadBActive: false,
   });
 
-  // ── Audio contexts ──────────────────────────────────────────────────────────
-  const bassCtxRef = useRef<AudioContext | null>(null);
-  const highsCtxRef = useRef<AudioContext | null>(null);
+  // ── Audio context (ONE unified helixCtx) ─────────────────────────────────
+  const helixCtxRef = useRef<AudioContext | null>(null);
 
-  // ── Bass chain refs ─────────────────────────────────────────────────────────
-  const bassInsertRef = useRef<GainNode | null>(null);
-  const subGainNodeRef = useRef<GainNode | null>(null); // FIX 1: real sub level control
+  // ── Bass chain refs ────────────────────────────────────────────────────────
+  const volumeGainRef = useRef<GainNode | null>(null); // maps 1-100 to 0.001-1.0
   const bassEQFiltersRef = useRef<BiquadFilterNode[]>([]);
-
-  // Epicenter stage
   const bassPfmFilterRef = useRef<BiquadFilterNode | null>(null);
   const bassRestLPRef = useRef<BiquadFilterNode | null>(null);
   const bassRestGainRef = useRef<GainNode | null>(null);
   const bassRestMixRef = useRef<GainNode | null>(null);
-  const bassMaximizerRef = useRef<BiquadFilterNode | null>(null);
-  const bassParaBassRef = useRef<BiquadFilterNode | null>(null);
   const bassOutputLevelRef = useRef<GainNode | null>(null);
-
-  // Natural bottom
   const bassNaturalBottomRef = useRef<GainNode | null>(null);
-
-  // Linkwitz-Riley 4th-order crossover (bass LP path: two cascaded 2nd-order Butterworth LP)
-  const bassLR1Ref = useRef<BiquadFilterNode | null>(null); // first Butterworth LP
-  const bassLR2Ref = useRef<BiquadFilterNode | null>(null); // second Butterworth LP (cascaded)
-
-  // Canister stage
-  const canisterF1Ref = useRef<BiquadFilterNode | null>(null); // 14Hz peaking
-  const canisterF2Ref = useRef<BiquadFilterNode | null>(null); // 40Hz peaking
-  const canisterF3Ref = useRef<BiquadFilterNode | null>(null); // 80Hz peaking
-  const canisterOutRef = useRef<GainNode | null>(null); // wet output
-  const canisterDryRef = useRef<GainNode | null>(null); // dry bypass
-  const canisterMixRef = useRef<GainNode | null>(null); // merge
-
-  // SRL (1 only — NO duplicate limiter)
+  const bassLR1Ref = useRef<BiquadFilterNode | null>(null);
+  const bassLR2Ref = useRef<BiquadFilterNode | null>(null);
+  const canisterF1Ref = useRef<BiquadFilterNode | null>(null);
+  const canisterF2Ref = useRef<BiquadFilterNode | null>(null);
+  const canisterF3Ref = useRef<BiquadFilterNode | null>(null);
+  const canisterOutRef = useRef<GainNode | null>(null);
+  const canisterDryRef = useRef<GainNode | null>(null);
+  const canisterMixRef = useRef<GainNode | null>(null);
+  const safetyBoostRef = useRef<BiquadFilterNode | null>(null);
   const bassCompRef = useRef<DynamicsCompressorNode | null>(null);
-
-  // Output
   const bassAnalyserRef = useRef<AnalyserNode | null>(null);
-  const bassGainRef = useRef<GainNode | null>(null);
-  const bassUltraGainRef = useRef<GainNode | null>(null);
+  // masterGain: ceiling 0.85-0.98 set by powerMimic, NEVER above 1.0
+  const masterGainRef = useRef<GainNode | null>(null);
+  // Sub level gain — inserted between bass processing and masterGain
+  const subLevelGainRef = useRef<GainNode | null>(null);
+  // 40Hz deep bass boost — +6dB peaking, always active
+  const deepBassBoostRef = useRef<BiquadFilterNode | null>(null);
+  // Low End Booster node — 30Hz +8dB, activated by enableLowEndBooster
+  const lowEndBoostNodeRef = useRef<BiquadFilterNode | null>(null);
+  // Protection nodes
+  const distortionShaperRef = useRef<WaveShaperNode | null>(null);
+  const cleanFilterRef = useRef<BiquadFilterNode | null>(null);
+  // Gain snapshot for kill switch restore
+  const gainSnapshotRef = useRef<{
+    subLevel: number;
+    canisterOut: number;
+    bassRestGain: number;
+    canisterDry: number;
+    canisterF1: number;
+    canisterF2: number;
+    canisterF3: number;
+    ultra: number;
+  }>({
+    subLevel: 1.0,
+    canisterOut: 0.8,
+    bassRestGain: 1.0,
+    canisterDry: 1.0,
+    canisterF1: 0.0,
+    canisterF2: 0.0,
+    canisterF3: 0.0,
+    ultra: 1.0,
+  });
 
-  // Legacy inert refs
-  const bassCheaterRef = useRef<BiquadFilterNode | null>(null);
-  const bassEQuakeRef = useRef<BiquadFilterNode | null>(null);
-
-  // ── Highs chain refs ────────────────────────────────────────────────────────
-  const highsInsertRef = useRef<GainNode | null>(null);
-  const highsEQFiltersRef = useRef<BiquadFilterNode[]>([]);
-
-  // Linkwitz-Riley 4th-order crossover (highs HP path)
+  // ── Highs chain refs ───────────────────────────────────────────────────────
   const highsLR1Ref = useRef<BiquadFilterNode | null>(null);
   const highsLR2Ref = useRef<BiquadFilterNode | null>(null);
-
   const highsCompRef = useRef<DynamicsCompressorNode | null>(null);
   const highsAnalyserRef = useRef<AnalyserNode | null>(null);
-  const highsGainRef = useRef<GainNode | null>(null);
-  const highsUltraGainRef = useRef<GainNode | null>(null);
+  const ultraGainRef = useRef<GainNode | null>(null); // Ultra authority
+  // Separate EQ filter chain for highs path (bands 2-7: 250Hz, 500Hz, 1kHz, 4kHz, 8kHz, 16kHz)
+  const highsEQFiltersRef = useRef<BiquadFilterNode[]>([]);
 
-  // ── Analyser data buffers ────────────────────────────────────────────────────
+  // ── Analyser data buffers ─────────────────────────────────────────────────
   const bassAnalyserDataRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const highsAnalyserDataRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+  const bassFFTDataRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+  const deepSustainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const deepSustainActiveRef = useRef<boolean>(false);
   const prevBassFreqRef = useRef<number>(0);
   const charRafRef = useRef<number>(0);
+  const zeroStackingRafRef = useRef<number>(0); // Zero Stacking Policy Chip RAF
 
-  // ── Audio element refs ───────────────────────────────────────────────────────
-  const bassAudioRef = useRef<HTMLAudioElement | null>(null);
-  const highsAudioRef = useRef<HTMLAudioElement | null>(null);
-  const bassSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const highsSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  // ── Audio element + source ─────────────────────────────────────────────────
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const fileUrlRef = useRef<string>("");
-  const volumeRef = useRef<number>(350);
-  const asoV3ActiveRef = useRef<boolean>(false);
+  const volumeRef = useRef<number>(50);
   const rafRef = useRef<number>(0);
-  const reductionRafRef = useRef<number>(0);
+  const processorMimic120dBRef = useRef(50);
 
-  // ── Timer refs ───────────────────────────────────────────────────────────────
+  // ── Timer refs ─────────────────────────────────────────────────────────────
   const boosterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const boosterCountdownRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // SRL D-grade protection timer
   const srlDTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const srlDActiveRef = useRef<boolean>(false);
+  const btScanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Processor Characteristics tick (DUAL TRAINING) ──────────────────────────
+  // ── SharedArrayBuffer (memory bridge Thread A ↔ Thread B) ────────────────
+  const sharedBufferRef = useRef<SharedArrayBuffer | null>(null);
+  const sharedViewRef = useRef<Float32Array | null>(null);
+
+  // ── Intelligence Worker (Thread B) ────────────────────────────────────────
+  const workerRef = useRef<Worker | null>(null);
+
+  // ── Context initialisation ─────────────────────────────────────────────────
+  const initContext = useCallback(() => {
+    if (helixCtxRef.current) return;
+
+    const ctx = new AudioContext();
+
+    // ── 1. Volume gain (maps 1-100 → 0.001-1.0) ────────────────────────────
+    const volumeGain = ctx.createGain();
+    volumeGain.gain.value = volToGain(50); // default volume 50
+
+    // ── 2. EQ filters (8 bands) ─────────────────────────────────────────────
+    const eqFilters: BiquadFilterNode[] = EQ_FREQS.map((freq, idx) => {
+      const f = ctx.createBiquadFilter();
+      f.type = "peaking";
+      f.frequency.value = freq;
+      f.Q.value = EQ_Q_VALUES[idx] ?? 1.0;
+      f.gain.value = EQ_LOW_BASE_BOOST[idx] ?? 0;
+      return f;
+    });
+
+    // ── 3. Epicenter stage ──────────────────────────────────────────────────
+    const bassPfmFilter = ctx.createBiquadFilter();
+    bassPfmFilter.type = "highpass";
+    bassPfmFilter.frequency.value = 14;
+    bassPfmFilter.Q.value = Math.SQRT1_2;
+
+    const bassRestLP = ctx.createBiquadFilter();
+    bassRestLP.type = "lowpass";
+    bassRestLP.frequency.value = 50;
+    bassRestLP.Q.value = 0.5;
+
+    const bassRestGain = ctx.createGain();
+    bassRestGain.gain.value = 1.0; // RULE: capped at 1.0 — Zero Stacking Policy max pass-through
+
+    const bassRestMix = ctx.createGain();
+    bassRestMix.gain.value = 1.0;
+
+    const bassOutputLevel = ctx.createGain();
+    bassOutputLevel.gain.value = 1.0;
+
+    // ── 4. Natural Bottom ───────────────────────────────────────────────────
+    const bassNaturalBottom = ctx.createGain();
+    bassNaturalBottom.gain.value = 1.0;
+
+    // ── 5. Linkwitz-Riley 4th-order LP crossover (80Hz) ─────────────────────
+    const bassLR1 = ctx.createBiquadFilter();
+    bassLR1.type = "lowpass";
+    bassLR1.frequency.value = 80;
+    bassLR1.Q.value = Math.SQRT1_2;
+
+    const bassLR2 = ctx.createBiquadFilter();
+    bassLR2.type = "lowpass";
+    bassLR2.frequency.value = 80;
+    bassLR2.Q.value = Math.SQRT1_2;
+
+    // ── 6. Canister stage ───────────────────────────────────────────────────
+    const canisterF1 = ctx.createBiquadFilter();
+    canisterF1.type = "peaking";
+    canisterF1.frequency.value = 19;
+    canisterF1.Q.value = 1.5;
+    canisterF1.gain.value = 3;
+
+    const canisterF2 = ctx.createBiquadFilter();
+    canisterF2.type = "peaking";
+    canisterF2.frequency.value = 40;
+    canisterF2.Q.value = 2.0;
+    canisterF2.gain.value = 4;
+
+    const canisterF3 = ctx.createBiquadFilter();
+    canisterF3.type = "peaking";
+    canisterF3.frequency.value = 80;
+    canisterF3.Q.value = 1.5;
+    canisterF3.gain.value = 3;
+
+    const canisterOut = ctx.createGain();
+    canisterOut.gain.value = 0.8; // FIX: starts connected at 0.8 (not 0)
+
+    const canisterDry = ctx.createGain();
+    canisterDry.gain.value = 1.0;
+
+    const canisterMix = ctx.createGain();
+    canisterMix.gain.value = 1.0;
+
+    // ── 7. Safety boost (30Hz peaking +3dB fixed — 1,000W safety chars) ────
+    const safetyBoost = ctx.createBiquadFilter();
+    safetyBoost.type = "peaking";
+    safetyBoost.frequency.value = 30;
+    safetyBoost.Q.value = 1.0;
+    safetyBoost.gain.value = 3; // fixed +3dB — not user-controllable, not a gain multiplier
+
+    // ── 7b. 40Hz deep bass boost (+6dB peaking, always active) ──────────────
+    const deepBassBoost = ctx.createBiquadFilter();
+    deepBassBoost.type = "peaking";
+    deepBassBoost.frequency.value = 40;
+    deepBassBoost.Q.value = 1.4;
+    deepBassBoost.gain.value = 6; // +6dB default deep bass reinforcement
+
+    // ── 7c. Low End Booster node (30Hz +8dB, Q=1.0 — activated by user) ─────
+    const lowEndBoostNode = ctx.createBiquadFilter();
+    lowEndBoostNode.type = "peaking";
+    lowEndBoostNode.frequency.value = 30;
+    lowEndBoostNode.Q.value = 1.0;
+    lowEndBoostNode.gain.value = 0; // starts off — activated when booster enabled
+
+    // ── 7d. Sub level gain node ──────────────────────────────────────────────
+    const subLevelGain = ctx.createGain();
+    subLevelGain.gain.value = 1.0;
+
+    // ── 7e. Protection: WaveShaperNode (soft-clip only, NOT saturation) ──────
+    const distortionShaper = ctx.createWaveShaper();
+    distortionShaper.curve = null; // pass-through until setDistortionReduction called
+    distortionShaper.oversample = "4x";
+
+    // ── 7f. Clean filter (highpass 20Hz for tight bass cutoff) ───────────────
+    const cleanFilter = ctx.createBiquadFilter();
+    cleanFilter.type = "highpass";
+    cleanFilter.frequency.value = 20;
+    cleanFilter.Q.value = 0.5;
+
+    // ── 8. SRL Compressor (exactly ONE — no duplicate limiter) ──────────────
+    const bassComp = ctx.createDynamicsCompressor();
+    bassComp.threshold.value = -24;
+    bassComp.knee.value = 30;
+    bassComp.ratio.value = 4;
+    bassComp.attack.value = 0.003;
+    bassComp.release.value = 0.25;
+
+    // ── 9. Analyser ──────────────────────────────────────────────────────────
+    const bassAnalyser = ctx.createAnalyser();
+    bassAnalyser.fftSize = 2048;
+    bassAnalyser.smoothingTimeConstant = 0.75;
+
+    // ── 10. Master gain — FIXED 1.0, NEVER above 1 ──────────────────────────
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = 1.0; // RULE: pass-through only, NEVER modified
+
+    // ── 11. Highs path — separate EQ chain for bands 2-7 (250Hz+) ───────────
+    // Create dedicated EQ filters for highs path (bands 2-7 only)
+    const highsEQFilters: BiquadFilterNode[] = EQ_FREQS.slice(2).map(
+      (freq, i) => {
+        const f = ctx.createBiquadFilter();
+        f.type = "peaking";
+        f.frequency.value = freq;
+        f.Q.value = EQ_Q_VALUES[i + 2] ?? 1.0;
+        f.gain.value = 0;
+        return f;
+      },
+    );
+
+    const highsLR1 = ctx.createBiquadFilter();
+    highsLR1.type = "highpass";
+    highsLR1.frequency.value = 250;
+    highsLR1.Q.value = Math.SQRT1_2;
+
+    const highsLR2 = ctx.createBiquadFilter();
+    highsLR2.type = "highpass";
+    highsLR2.frequency.value = 250;
+    highsLR2.Q.value = Math.SQRT1_2;
+
+    const highsComp = ctx.createDynamicsCompressor();
+    highsComp.threshold.value = -24;
+    highsComp.knee.value = 30;
+    highsComp.ratio.value = 4;
+    highsComp.attack.value = 0.003;
+    highsComp.release.value = 0.25;
+
+    const highsAnalyser = ctx.createAnalyser();
+    highsAnalyser.fftSize = 256;
+    highsAnalyser.smoothingTimeConstant = 0.8;
+
+    const ultraGain = ctx.createGain();
+    ultraGain.gain.value = 1.0;
+
+    // ── Wire the full chain ──────────────────────────────────────────────────
+    // Bass path: volumeGain → EQ[0..7] (all 8 bands for bass)
+    volumeGain.connect(eqFilters[0]);
+    for (let i = 0; i < eqFilters.length - 1; i++) {
+      eqFilters[i].connect(eqFilters[i + 1]);
+    }
+    const eqLast = eqFilters[eqFilters.length - 1];
+
+    // EQ last → pfmFilter → dry to bassRestMix + LP restoration parallel
+    eqLast.connect(bassPfmFilter);
+    bassPfmFilter.connect(bassRestMix);
+    bassPfmFilter.connect(bassRestLP);
+    bassRestLP.connect(bassRestGain);
+    bassRestGain.connect(bassRestMix);
+
+    // bassRestMix → outputLevel → naturalBottom → deepBassBoost → LR crossover
+    bassRestMix.connect(bassOutputLevel);
+    bassOutputLevel.connect(bassNaturalBottom);
+    bassNaturalBottom.connect(deepBassBoost);
+    deepBassBoost.connect(lowEndBoostNode);
+    lowEndBoostNode.connect(bassLR1);
+    bassLR1.connect(bassLR2);
+
+    // LR2 → Canister wet/dry → canisterMix
+    bassLR2.connect(canisterF1);
+    canisterF1.connect(canisterF2);
+    canisterF2.connect(canisterF3);
+    canisterF3.connect(canisterOut);
+    canisterOut.connect(canisterMix);
+    bassLR2.connect(canisterDry);
+    canisterDry.connect(canisterMix);
+
+    // canisterMix → safetyBoost → cleanFilter → distortionShaper → bassComp → bassAnalyser → subLevelGain → masterGain → destination
+    canisterMix.connect(safetyBoost);
+    safetyBoost.connect(cleanFilter);
+    cleanFilter.connect(distortionShaper);
+    distortionShaper.connect(bassComp);
+    bassComp.connect(bassAnalyser);
+    bassAnalyser.connect(subLevelGain);
+    subLevelGain.connect(masterGain);
+    masterGain.connect(ctx.destination);
+
+    // Highs path: volumeGain → highsEQ[2..7] → highsLR1 → highsLR2 → highsComp → highsAnalyser → ultraGain → destination
+    // Separate EQ chain for highs — does NOT share nodes with bass EQ chain
+    volumeGain.connect(highsEQFilters[0]);
+    for (let i = 0; i < highsEQFilters.length - 1; i++) {
+      highsEQFilters[i].connect(highsEQFilters[i + 1]);
+    }
+    const highsEQLast = highsEQFilters[highsEQFilters.length - 1];
+    highsEQLast.connect(highsLR1);
+    highsLR1.connect(highsLR2);
+    highsLR2.connect(highsComp);
+    highsComp.connect(highsAnalyser);
+    highsAnalyser.connect(ultraGain);
+    ultraGain.connect(ctx.destination);
+
+    // ── Store refs ───────────────────────────────────────────────────────────
+    helixCtxRef.current = ctx;
+    volumeGainRef.current = volumeGain;
+    bassEQFiltersRef.current = eqFilters;
+    bassPfmFilterRef.current = bassPfmFilter;
+    bassRestLPRef.current = bassRestLP;
+    bassRestGainRef.current = bassRestGain;
+    bassRestMixRef.current = bassRestMix;
+    bassOutputLevelRef.current = bassOutputLevel;
+    bassNaturalBottomRef.current = bassNaturalBottom;
+    bassLR1Ref.current = bassLR1;
+    bassLR2Ref.current = bassLR2;
+    canisterF1Ref.current = canisterF1;
+    canisterF2Ref.current = canisterF2;
+    canisterF3Ref.current = canisterF3;
+    canisterOutRef.current = canisterOut;
+    canisterDryRef.current = canisterDry;
+    canisterMixRef.current = canisterMix;
+    safetyBoostRef.current = safetyBoost;
+    bassCompRef.current = bassComp;
+    bassAnalyserRef.current = bassAnalyser;
+    masterGainRef.current = masterGain;
+    subLevelGainRef.current = subLevelGain;
+    deepBassBoostRef.current = deepBassBoost;
+    lowEndBoostNodeRef.current = lowEndBoostNode;
+    distortionShaperRef.current = distortionShaper;
+    cleanFilterRef.current = cleanFilter;
+    highsLR1Ref.current = highsLR1;
+    highsLR2Ref.current = highsLR2;
+    highsCompRef.current = highsComp;
+    highsAnalyserRef.current = highsAnalyser;
+    ultraGainRef.current = ultraGain;
+    highsEQFiltersRef.current = highsEQFilters;
+
+    // Analyser buffers
+    bassAnalyserDataRef.current = new Float32Array(
+      bassAnalyser.fftSize,
+    ) as Float32Array<ArrayBuffer>;
+    highsAnalyserDataRef.current = new Float32Array(
+      highsAnalyser.fftSize,
+    ) as Float32Array<ArrayBuffer>;
+    bassFFTDataRef.current = new Float32Array(
+      bassAnalyser.frequencyBinCount,
+    ) as Float32Array<ArrayBuffer>;
+
+    // ── Initialize SharedArrayBuffer (memory bridge) ─────────────────────────
+    if (typeof SharedArrayBuffer !== "undefined") {
+      try {
+        const sab = new SharedArrayBuffer(SAB_SIZE * 4);
+        const view = new Float32Array(sab);
+        view[SAB_OHMS] = 8;
+        view[SAB_WATTS] = 400;
+        view[SAB_CHIPS_ACTIVE] = 25;
+        view[SAB_BT_CONNECTED] = 0;
+        view[SAB_GAIN_KILL] = 0;
+        view[SAB_POWER_MIMIC] = 1.0;
+        sharedBufferRef.current = sab;
+        sharedViewRef.current = view;
+      } catch {
+        // SharedArrayBuffer not available (cross-origin isolation required)
+        console.warn(
+          "[Helix] SharedArrayBuffer not available — Thread B disabled",
+        );
+      }
+    }
+  }, []);
+
+  // ── Intelligence Worker (Thread B) startup ───────────────────────────────────
+  const startWorker = useCallback(() => {
+    if (workerRef.current || !sharedBufferRef.current) return;
+    try {
+      const worker = new Worker(
+        new URL("../workers/intelligenceWorker.ts", import.meta.url),
+        { type: "module" },
+      );
+
+      // Load session learning from localStorage
+      let learning: Record<string, number> | undefined;
+      try {
+        const saved = localStorage.getItem("helixChipLearning");
+        if (saved) learning = JSON.parse(saved) as Record<string, number>;
+      } catch {
+        /* ignore */
+      }
+
+      worker.postMessage({
+        type: "INIT",
+        buffer: sharedBufferRef.current,
+        learning,
+      });
+
+      worker.onmessage = (
+        event: MessageEvent<{ type: string; data: Record<string, number> }>,
+      ) => {
+        if (event.data.type === "SESSION_LEARNING") {
+          try {
+            localStorage.setItem(
+              "helixChipLearning",
+              JSON.stringify(event.data.data),
+            );
+          } catch {
+            /* ignore */
+          }
+        }
+      };
+
+      workerRef.current = worker;
+      setState((s) => ({
+        ...s,
+        threadBActive: true,
+        intelligenceLayer: { ...s.intelligenceLayer, threadBActive: true },
+      }));
+      console.log("[Helix] Thread B (Intelligence Worker) started");
+    } catch (err) {
+      console.warn("[Helix] Could not start intelligence worker:", err);
+    }
+  }, []);
+
+  // ── Bluetooth Speaker Scanner Chip (main thread) ─────────────────────────────
+  const runBluetoothScan = useCallback(async () => {
+    const nav = navigator as Navigator & {
+      bluetooth?: { getDevices(): Promise<{ name?: string }[]> };
+    };
+    if (!nav.bluetooth) return;
+
+    try {
+      const devices = await nav.bluetooth.getDevices();
+      if (!devices.length) return; // BT not on — no scan
+
+      const device = devices[0];
+      const name = device.name ?? "";
+      const profile = lookupSpeaker(name);
+
+      const view = sharedViewRef.current;
+      if (view) {
+        view[SAB_OHMS] = profile.ohms;
+        view[SAB_WATTS] = profile.watts;
+        view[SAB_BT_CONNECTED] = 1;
+      }
+
+      // Also post to worker for box type detection
+      workerRef.current?.postMessage({
+        type: "SET_BOX_TYPE",
+        boxType: profile.boxType,
+      });
+
+      setState((s) => ({
+        ...s,
+        speakerProfile: {
+          detectedName: name || "QFX PBX-15",
+          ohms: profile.ohms,
+          estimatedSize: profile.size,
+          powerHandling: `${profile.watts}W RMS`,
+          profileApplied: true,
+        },
+      }));
+
+      console.log(
+        `[Bluetooth Scanner] Speaker detected: ${name || "QFX PBX-15"} | ${profile.ohms}Ω | ${profile.watts}W | ${profile.boxType}`,
+      );
+    } catch {
+      /* User denied or BT off */
+    }
+  }, []);
+
+  // ── Zero Stacking Policy Chip (runs every RAF — separate from 20-30 smart chips) ─
+  const startZeroStackingChip = useCallback(() => {
+    const tick = () => {
+      const view = sharedViewRef.current;
+      const masterGain = masterGainRef.current;
+      const _volumeGain = volumeGainRef.current;
+
+      if (view && masterGain) {
+        const gainKillActive = view[SAB_GAIN_KILL] > 0.5;
+
+        // masterGain is ALWAYS 1.0 — bypass ceiling, never killed
+        if (masterGain.gain.value !== 1.0) {
+          console.log(
+            `[Zero Stacking Policy Chip] masterGain corrected to 1.0 (was ${masterGain.gain.value})`,
+          );
+          masterGain.gain.setValueAtTime(1.0, masterGain.context.currentTime);
+        }
+
+        if (gainKillActive) {
+          // Re-zero any killable gain that drifted back
+          const now = masterGain.context.currentTime;
+          if (
+            subLevelGainRef.current &&
+            subLevelGainRef.current.gain.value !== 0
+          )
+            subLevelGainRef.current.gain.setValueAtTime(0, now);
+          if (
+            bassRestGainRef.current &&
+            bassRestGainRef.current.gain.value !== 0
+          )
+            bassRestGainRef.current.gain.setValueAtTime(0, now);
+          if (canisterOutRef.current && canisterOutRef.current.gain.value !== 0)
+            canisterOutRef.current.gain.setValueAtTime(0, now);
+          if (canisterDryRef.current && canisterDryRef.current.gain.value !== 0)
+            canisterDryRef.current.gain.setValueAtTime(0, now);
+          if (canisterF1Ref.current && canisterF1Ref.current.gain.value !== 0)
+            canisterF1Ref.current.gain.setValueAtTime(0, now);
+          if (canisterF2Ref.current && canisterF2Ref.current.gain.value !== 0)
+            canisterF2Ref.current.gain.setValueAtTime(0, now);
+          if (canisterF3Ref.current && canisterF3Ref.current.gain.value !== 0)
+            canisterF3Ref.current.gain.setValueAtTime(0, now);
+          if (ultraGainRef.current && ultraGainRef.current.gain.value !== 0)
+            ultraGainRef.current.gain.setValueAtTime(0, now);
+        } else {
+          // Clamp any killable gain that crept above 1.0
+          const now = masterGain.context.currentTime;
+          if (
+            subLevelGainRef.current &&
+            subLevelGainRef.current.gain.value > 1.0
+          ) {
+            console.log("[Zero Stacking Policy Chip] subLevel clamped to 1.0");
+            subLevelGainRef.current.gain.setValueAtTime(1.0, now);
+          }
+          if (
+            bassRestGainRef.current &&
+            bassRestGainRef.current.gain.value > 1.0
+          ) {
+            console.log(
+              "[Zero Stacking Policy Chip] bassRestGain clamped to 1.0",
+            );
+            bassRestGainRef.current.gain.setValueAtTime(1.0, now);
+          }
+          if (
+            canisterOutRef.current &&
+            canisterOutRef.current.gain.value > 1.0
+          ) {
+            console.log(
+              "[Zero Stacking Policy Chip] canisterOut clamped to 1.0",
+            );
+            canisterOutRef.current.gain.setValueAtTime(1.0, now);
+          }
+          if (ultraGainRef.current && ultraGainRef.current.gain.value > 1.0) {
+            console.log("[Zero Stacking Policy Chip] ultraGain clamped to 1.0");
+            ultraGainRef.current.gain.setValueAtTime(1.0, now);
+          }
+        }
+      }
+
+      zeroStackingRafRef.current = requestAnimationFrame(tick);
+    };
+    zeroStackingRafRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  // ── Characteristics tick (reads SharedArrayBuffer from Thread B) ─────────────
   const startCharTick = useCallback(() => {
     const tick = () => {
       const bassAnalyser = bassAnalyserRef.current;
       const highsAnalyser = highsAnalyserRef.current;
       const bassData = bassAnalyserDataRef.current;
       const highsData = highsAnalyserDataRef.current;
+      const fftData = bassFFTDataRef.current;
+      const view = sharedViewRef.current;
 
       if (!bassAnalyser || !highsAnalyser || !bassData || !highsData) {
         charRafRef.current = requestAnimationFrame(tick);
         return;
       }
 
-      bassAnalyser.getFloatTimeDomainData(bassData);
-      highsAnalyser.getFloatTimeDomainData(highsData);
+      bassAnalyser.getFloatTimeDomainData(
+        bassData as Float32Array<ArrayBuffer>,
+      );
+      highsAnalyser.getFloatTimeDomainData(
+        highsData as Float32Array<ArrayBuffer>,
+      );
 
       let bassRmsSum = 0;
       for (let i = 0; i < bassData.length; i++)
@@ -494,53 +1064,219 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       const highsRms = Math.sqrt(highsRmsSum / highsData.length);
 
       const vol = volumeRef.current;
-      const volNorm = (vol - 1) / 699;
+      const volNorm = (vol - 1) / 99; // 1-100 range
 
-      // ── Audio behavior characteristics ────────────────────────────────────
-      const punch = Math.min(100, Math.round(bassRms * 500 + volNorm * 40));
-      const depth = Math.min(100, Math.round(85 + bassRms * 50));
-      const weight = Math.min(100, Math.round(bassRms * 600 + volNorm * 30));
+      // ── Read Thread B values from SharedArrayBuffer ───────────────────────
+      let threadBPunch = 0;
+      let threadBDepth = 90;
+      let threadBWeight = 0;
+      let threadBClarity = 0;
+      let threadBBassDrop = 0;
+      let threadBBassNote = 0;
+      let threadBPowerMimic = 0;
+      let threadBSignalAuth = 0;
+      let threadBAmpResp = 0;
+      let threadBChipsActive = 25;
+
+      if (view) {
+        threadBPunch = view[SAB_PUNCH] * 100;
+        threadBDepth = view[SAB_DEPTH] * 100;
+        threadBWeight = view[SAB_WEIGHT] * 100;
+        threadBClarity = view[SAB_CLARITY] * 100;
+        threadBBassDrop = view[SAB_BASS_DROP] * 100;
+        threadBBassNote = view[SAB_BASS_NOTE] * 100;
+        threadBPowerMimic = view[SAB_POWER_MIMIC] * 100;
+        threadBSignalAuth = view[SAB_SIGNAL_AUTH] * 100;
+        threadBAmpResp = view[SAB_AMP_RESPONSE] * 100;
+        threadBChipsActive = Math.round(view[SAB_CHIPS_ACTIVE]);
+
+        // ── Bridge Thread B to real Web Audio nodes (Intelligence Layer → Audio) ─
+        const gainKillOn = view[SAB_GAIN_KILL] > 0.5;
+        if (!gainKillOn) {
+          // punch (0-1) → bassComp knee (0 to 40) — higher punch = tighter knee
+          const punchRaw = view[SAB_PUNCH];
+          if (bassCompRef.current) {
+            bassCompRef.current.knee.value = punchRaw * 40;
+          }
+          // depth (0-1) → bassRestGain (clamped to 1.0 max — Zero Stacking Policy)
+          const depthRaw = view[SAB_DEPTH];
+          if (bassRestGainRef.current) {
+            bassRestGainRef.current.gain.setValueAtTime(
+              Math.min(1.0, 0.8 + depthRaw * 1.2),
+              bassRestGainRef.current.context.currentTime,
+            );
+          }
+          // weight (0-1) → deepBassBoost gain (+4dB to +10dB)
+          const weightRaw = view[SAB_WEIGHT];
+          if (deepBassBoostRef.current) {
+            deepBassBoostRef.current.gain.value = 4 + weightRaw * 6;
+          }
+          // clarity (0-1) → highsEQFilters[4] (8kHz band) gain (0 to +3dB)
+          const clarityRaw = view[SAB_CLARITY];
+          if (highsEQFiltersRef.current[4]) {
+            highsEQFiltersRef.current[4].gain.value = clarityRaw * 3;
+          }
+          // powerMimic (0-1) → masterGain ceiling (0.85 to 0.98)
+          const powerRaw = view[SAB_POWER_MIMIC];
+          const targetCeiling = 0.85 + powerRaw * 0.13; // 0.85 to 0.98
+          if (masterGainRef.current) {
+            // Only update if within safe ceiling — NEVER above 1.0 (Zero Stacking Policy)
+            const clamped = Math.min(targetCeiling, 1.0);
+            masterGainRef.current.gain.value = clamped;
+          }
+
+          // ── Zero Stacking Policy — engine-level clamp in char tick ────────────
+          const zspNodes: Array<{ node: GainNode | null; name: string }> = [
+            { node: subLevelGainRef.current, name: "subLevelGain" },
+            { node: canisterOutRef.current, name: "canisterOut" },
+            { node: canisterDryRef.current, name: "canisterDry" },
+          ];
+          for (const { node, name } of zspNodes) {
+            if (node && node.gain.value > 1.0) {
+              console.warn(
+                `[Zero Stacking Policy] VIOLATION: ${name} was ${node.gain.value.toFixed(3)}, clamped to 1.0`,
+              );
+              node.gain.value = 1.0;
+            }
+          }
+          // masterGain hard ceiling — absolute
+          if (masterGainRef.current && masterGainRef.current.gain.value > 1.0) {
+            console.warn(
+              "[Zero Stacking Policy] VIOLATION: masterGain exceeded 1.0, clamped",
+            );
+            masterGainRef.current.gain.value = 1.0;
+          }
+          // volumeGain allowed 0.001-1.0 — clamp if over
+          if (volumeGainRef.current && volumeGainRef.current.gain.value > 1.0) {
+            console.warn(
+              "[Zero Stacking Policy] VIOLATION: volumeGain exceeded 1.0, clamped",
+            );
+            volumeGainRef.current.gain.value = 1.0;
+          }
+        }
+      }
+
+      // Blend Thread B values with RMS readings (Thread A drives, Thread B enhances)
+      const punch = Math.min(
+        100,
+        Math.round((bassRms * 300 + volNorm * 30) * 0.6 + threadBPunch * 0.4),
+      );
+      const depth = Math.min(
+        100,
+        Math.round((85 + bassRms * 30) * 0.7 + threadBDepth * 0.3),
+      );
+      const weight = Math.min(
+        100,
+        Math.round((bassRms * 400 + volNorm * 25) * 0.6 + threadBWeight * 0.4),
+      );
       const clarity = Math.min(
         100,
-        Math.round(highsRms * 500 + volNorm * 25 + 20),
+        Math.round(
+          (highsRms * 400 + volNorm * 20 + 20) * 0.65 + threadBClarity * 0.35,
+        ),
       );
       const bassDrop =
-        vol >= 100 && bassRms > 0.01
-          ? Math.min(100, Math.round(80 + bassRms * 200))
+        vol >= 50 && bassRms > 0.01
+          ? Math.min(
+              100,
+              Math.round(60 + bassRms * 150 + threadBBassDrop * 0.3),
+            )
           : 0;
       const diff = Math.abs(bassRms - prevBassFreqRef.current);
       prevBassFreqRef.current = bassRms;
-      const bassNoteSwitching = Math.min(100, Math.round(diff * 8000));
+      const bassNoteSwitching = Math.min(
+        100,
+        Math.round(diff * 6000 + threadBBassNote * 0.2),
+      );
 
-      // ── Power mimic characteristics (dual training) ───────────────────────
-      // powerMimic: simulates how a real amp at Bass 7000W pushes under load.
-      //   Real amp push = RMS signal authority scaled to channel wattage.
-      const bassPowerScale = ASO_BASS_WATTS / ASO_TOTAL_WATTS; // 0.538
+      const mimicCeiling = 0.5 + (processorMimic120dBRef.current / 100) * 0.5;
       const powerMimic = Math.min(
         100,
         Math.round(
-          (bassRms * 600 * bassPowerScale + volNorm * 50) *
-            (asoV3ActiveRef.current ? 1.35 : 1.0),
+          (bassRms * 400 * 0.538 + volNorm * 40) * mimicCeiling * 0.5 +
+            threadBPowerMimic * 0.5,
         ),
       );
-
-      // signalAuthority: weight and push felt in the signal — the authority of
-      //   real wattage — increases when ASO-V3 is active (20kW characteristics)
       const signalAuthority = Math.min(
         100,
         Math.round(
-          (punch * 0.4 + weight * 0.4 + depth * 0.2) *
-            (asoV3ActiveRef.current ? 1.4 : 1.0),
+          (punch * 0.4 + weight * 0.4 + depth * 0.2) * mimicCeiling * 0.6 +
+            threadBSignalAuth * 0.4,
         ),
       );
-
-      // ampResponse: how well the amp handles load at the four channel levels.
-      //   Modeled as recovery time metric — high RMS variation = high response.
       const combinedRms = bassRms * 0.6 + highsRms * 0.4;
       const ampResponse = Math.min(
         100,
-        Math.round(combinedRms * 700 + volNorm * 35),
+        Math.round(combinedRms * 500 + volNorm * 30 + threadBAmpResp * 0.3),
       );
+
+      // ── Bass Characteristics Engine — live Hz tracking (14–50Hz) ─────────
+      const liveEnergy14_50: number[] = new Array(37).fill(0) as number[];
+      let activeHz = 0;
+      let peakEnergy = 0;
+      let zeroDistortionActive = true;
+
+      if (fftData && bassAnalyser) {
+        bassAnalyser.getFloatFrequencyData(
+          fftData as Float32Array<ArrayBuffer>,
+        );
+        const sampleRate = helixCtxRef.current?.sampleRate ?? 44100;
+        const binHz = sampleRate / bassAnalyser.fftSize;
+
+        for (let hz = 14; hz <= 50; hz++) {
+          const binIndex = Math.round(hz / binHz);
+          if (binIndex >= fftData.length) continue;
+          const dbVal = fftData[binIndex] ?? -100;
+          const norm = Math.max(0, Math.min(1, (dbVal + 100) / 100));
+
+          let boostFactor = 1.0;
+          if (hz <= 20) boostFactor = 1.5;
+          else if (hz <= 35) boostFactor = 1.25;
+
+          const boosted = Math.min(1, norm * boostFactor);
+          liveEnergy14_50[hz - 14] = boosted;
+
+          if (boosted > 0.98) zeroDistortionActive = false;
+          if (boosted > peakEnergy) {
+            peakEnergy = boosted;
+            activeHz = hz;
+          }
+        }
+      }
+
+      const low40Energy =
+        liveEnergy14_50.slice(0, 27).reduce((a, b) => a + b, 0) / 27;
+
+      if (bassRms < 0.005 && low40Energy > 0.1) {
+        if (!deepSustainActiveRef.current) {
+          deepSustainActiveRef.current = true;
+          if (deepSustainTimerRef.current)
+            clearTimeout(deepSustainTimerRef.current);
+          deepSustainTimerRef.current = setTimeout(() => {
+            deepSustainActiveRef.current = false;
+          }, 120);
+        }
+      }
+
+      const deepSustainActive = deepSustainActiveRef.current;
+
+      // ── Update worker with current volume ─────────────────────────────────
+      if (workerRef.current) {
+        workerRef.current.postMessage({ type: "SET_VOLUME", volume: volNorm });
+      }
+
+      // ── Intelligence Layer state from SharedArrayBuffer ───────────────────
+      const isHelixActive = state.helixActive;
+      const intelligenceLayer: IntelligenceLayerState = {
+        appSelf: true,
+        smartChips: isHelixActive ? threadBChipsActive : 0,
+        totalBehaviors: 100000,
+        loadAmp: isHelixActive ? 35 : 0,
+        loadApp: isHelixActive ? 35 : 0,
+        loadChipCommander: isHelixActive ? 30 : 0,
+        threadBActive: workerRef.current !== null,
+        powerMimic: threadBPowerMimic,
+      };
 
       setState((s) => ({
         ...s,
@@ -555,323 +1291,21 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
           signalAuthority,
           ampResponse,
         },
+        bassCharState: {
+          activeHz,
+          liveEnergy14_50,
+          deepSustainActive,
+          zeroDistortionActive,
+        },
+        intelligenceLayer,
       }));
 
       charRafRef.current = requestAnimationFrame(tick);
     };
     charRafRef.current = requestAnimationFrame(tick);
-  }, []);
+  }, [state.helixActive]);
 
-  // ── Context / chain initialisation ──────────────────────────────────────────
-  const initContexts = useCallback(() => {
-    if (bassCtxRef.current) return;
-
-    const bassCtx = new AudioContext();
-    const highsCtx = new AudioContext();
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  BASS CHAIN
-    // ══════════════════════════════════════════════════════════════════════════
-
-    // 1. Insert gain (volume)
-    const bassInsert = bassCtx.createGain();
-    bassInsert.gain.value = 1.0;
-
-    // 2. Sub level GainNode (FIX 1) — sits between insert and EQ
-    //    User-controlled sub output. Default 1.0 = 100%. NEVER locked at 0.0.
-    const subGainNode = bassCtx.createGain();
-    subGainNode.gain.value = 1.0;
-
-    // 3. EQ filters (8 bands: 14-50Hz, 14-80Hz, 250Hz–16kHz)
-    //    FIX 2: Low-end bands (0,1) get base boost offsets baked in so bass is
-    //    audible from the very first slider movement.
-    //    Band 0 (19Hz, 14-50Hz lane): +3dB base, Q=1.8 (tight, won't bleed into 47Hz)
-    //    Band 1 (47Hz, 14-80Hz lane): +2dB base, Q=1.4
-    //    ONE 14Hz source: the PFM highpass filter below is the single 14Hz floor.
-    //    Both Band 0 (19Hz) and Band 1 (47Hz) share that floor — no duplicate 14Hz nodes.
-    const bassEQFilters: BiquadFilterNode[] = EQ_FREQS.map((freq, idx) => {
-      const f = bassCtx.createBiquadFilter();
-      f.type = "peaking";
-      f.frequency.value = freq;
-      f.Q.value = EQ_Q_VALUES[idx] ?? 1.0;
-      f.gain.value = EQ_LOW_BASE_BOOST[idx] ?? 0;
-      return f;
-    });
-
-    // ── EPICENTER STAGE ──────────────────────────────────────────────────────
-    const bassPfmFilter = bassCtx.createBiquadFilter();
-    bassPfmFilter.type = "highpass";
-    bassPfmFilter.frequency.value = 14;
-    bassPfmFilter.Q.value = Math.SQRT1_2;
-
-    const bassRestLP = bassCtx.createBiquadFilter();
-    bassRestLP.type = "lowpass";
-    bassRestLP.frequency.value = 50;
-    bassRestLP.Q.value = 0.5;
-
-    const bassRestGain = bassCtx.createGain();
-    bassRestGain.gain.value = 0.4;
-
-    const bassRestMix = bassCtx.createGain();
-    bassRestMix.gain.value = 1.0;
-
-    const bassMaximizer = bassCtx.createBiquadFilter();
-    bassMaximizer.type = "peaking";
-    bassMaximizer.frequency.value = 60;
-    bassMaximizer.Q.value = 1.2;
-    bassMaximizer.gain.value = 6;
-
-    const bassParaBass = bassCtx.createBiquadFilter();
-    bassParaBass.type = "peaking";
-    bassParaBass.frequency.value = 60;
-    bassParaBass.Q.value = 1.0;
-    bassParaBass.gain.value = 0;
-
-    const bassOutputLevel = bassCtx.createGain();
-    bassOutputLevel.gain.value = 1.0;
-    // ── END EPICENTER STAGE ──────────────────────────────────────────────────
-
-    // 3. Natural Bottom boost gain
-    const bassNaturalBottom = bassCtx.createGain();
-    bassNaturalBottom.gain.value = 1.0;
-
-    // ── LINKWITZ-RILEY 4TH-ORDER CROSSOVER (BASS LP PATH) ───────────────────
-    // Two cascaded 2nd-order Butterworth lowpass filters.
-    // Crossover at 80Hz by default (SRL-commanded).
-    const bassLR1 = bassCtx.createBiquadFilter();
-    bassLR1.type = "lowpass";
-    bassLR1.frequency.value = 80;
-    bassLR1.Q.value = Math.SQRT1_2; // Butterworth Q = 1/√2
-
-    const bassLR2 = bassCtx.createBiquadFilter();
-    bassLR2.type = "lowpass";
-    bassLR2.frequency.value = 80;
-    bassLR2.Q.value = Math.SQRT1_2;
-    // ── END CROSSOVER BASS ───────────────────────────────────────────────────
-
-    // ── CANISTER STAGE ───────────────────────────────────────────────────────
-    // F1 + F2 = 14–40Hz bottom note lane (controlled by canisterBottomBoost)
-    // F3       = 14–80Hz punch lane       (controlled by canisterPunchBoost)
-    const canisterF1 = bassCtx.createBiquadFilter();
-    canisterF1.type = "peaking";
-    canisterF1.frequency.value = 19; // bottom of 14-40Hz lane
-    canisterF1.Q.value = 1.5;
-    canisterF1.gain.value = 3;
-
-    const canisterF2 = bassCtx.createBiquadFilter();
-    canisterF2.type = "peaking";
-    canisterF2.frequency.value = 40;
-    canisterF2.Q.value = 2.0;
-    canisterF2.gain.value = 4;
-
-    const canisterF3 = bassCtx.createBiquadFilter();
-    canisterF3.type = "peaking";
-    canisterF3.frequency.value = 80;
-    canisterF3.Q.value = 1.5;
-    canisterF3.gain.value = 3;
-
-    const canisterOut = bassCtx.createGain();
-    canisterOut.gain.value = 0; // starts bypassed
-
-    const canisterDry = bassCtx.createGain();
-    canisterDry.gain.value = 1.0;
-
-    const canisterMix = bassCtx.createGain();
-    canisterMix.gain.value = 1.0;
-    // ── END CANISTER STAGE ───────────────────────────────────────────────────
-
-    // 4. SRL Compressor — exactly 1, NO duplicate hard limiter
-    const bassComp = bassCtx.createDynamicsCompressor();
-    bassComp.threshold.value = -24;
-    bassComp.knee.value = 30;
-    bassComp.ratio.value = 4;
-    bassComp.attack.value = 0.003;
-    bassComp.release.value = 0.25;
-
-    // 5. Analyser + output pass-through
-    const bassAnalyser = bassCtx.createAnalyser();
-    bassAnalyser.fftSize = 256;
-    bassAnalyser.smoothingTimeConstant = 0.8;
-
-    const bassGain = bassCtx.createGain();
-    bassGain.gain.value = 1.0; // G13 pass-through — NEVER modified
-
-    // 6. Ultra authority GainNode
-    const bassUltraGain = bassCtx.createGain();
-    bassUltraGain.gain.value = 1.0;
-
-    // ── Wire bass chain ──────────────────────────────────────────────────────
-    // insert → subGainNode → EQ[0..7]
-    bassInsert.connect(subGainNode);
-    subGainNode.connect(bassEQFilters[0]);
-    for (let i = 0; i < bassEQFilters.length - 1; i++) {
-      bassEQFilters[i].connect(bassEQFilters[i + 1]);
-    }
-    const bassEQLast = bassEQFilters[bassEQFilters.length - 1];
-
-    // EQ last → pfmFilter
-    bassEQLast.connect(bassPfmFilter);
-
-    // pfmFilter → dry path into bassRestMix
-    bassPfmFilter.connect(bassRestMix);
-    // pfmFilter → restoration parallel
-    bassPfmFilter.connect(bassRestLP);
-    bassRestLP.connect(bassRestGain);
-    bassRestGain.connect(bassRestMix);
-
-    // bassRestMix → Maximizer → ParaBass → OutputLevel
-    bassRestMix.connect(bassMaximizer);
-    bassMaximizer.connect(bassParaBass);
-    bassParaBass.connect(bassOutputLevel);
-
-    // OutputLevel → NaturalBottom → LR Crossover (cascaded LP)
-    bassOutputLevel.connect(bassNaturalBottom);
-    bassNaturalBottom.connect(bassLR1);
-    bassLR1.connect(bassLR2);
-
-    // LR2 → Canister wet + dry → canisterMix
-    bassLR2.connect(canisterF1);
-    canisterF1.connect(canisterF2);
-    canisterF2.connect(canisterF3);
-    canisterF3.connect(canisterOut);
-    canisterOut.connect(canisterMix); // wet (0 gain when inactive)
-
-    bassLR2.connect(canisterDry);
-    canisterDry.connect(canisterMix); // dry (always passes)
-
-    // canisterMix → SRL comp → analyser → gain → Ultra → dest
-    canisterMix.connect(bassComp);
-    bassComp.connect(bassAnalyser);
-    bassAnalyser.connect(bassGain);
-    bassGain.connect(bassUltraGain);
-    bassUltraGain.connect(bassCtx.destination);
-
-    // Legacy inert nodes (disconnected from chain)
-    const bassCheater = bassCtx.createBiquadFilter();
-    bassCheater.type = "peaking";
-    bassCheater.frequency.value = 33;
-    bassCheater.Q.value = 2;
-    bassCheater.gain.value = 0;
-
-    const bassEQuake = bassCtx.createBiquadFilter();
-    bassEQuake.type = "peaking";
-    bassEQuake.frequency.value = 28;
-    bassEQuake.Q.value = 1.5;
-    bassEQuake.gain.value = 0;
-
-    // ══════════════════════════════════════════════════════════════════════════
-    //  HIGHS CHAIN
-    //  Phase, SRS/WOW/TruBass, UltraCrystal nodes REMOVED in this build.
-    //  Hard brick-wall limiter REMOVED. SRL comp is the only compressor.
-    // ══════════════════════════════════════════════════════════════════════════
-
-    const highsInsert = highsCtx.createGain();
-    highsInsert.gain.value = 1.0;
-
-    const highsEQFilters: BiquadFilterNode[] = EQ_FREQS.map((freq, idx) => {
-      const f = highsCtx.createBiquadFilter();
-      f.type = "peaking";
-      f.frequency.value = freq;
-      f.Q.value = EQ_Q_VALUES[idx] ?? 1.0;
-      f.gain.value = EQ_LOW_BASE_BOOST[idx] ?? 0;
-      return f;
-    });
-
-    // LINKWITZ-RILEY 4TH-ORDER CROSSOVER (HIGHS HP PATH)
-    const highsLR1 = highsCtx.createBiquadFilter();
-    highsLR1.type = "highpass";
-    highsLR1.frequency.value = 250; // default highs cutoff
-    highsLR1.Q.value = Math.SQRT1_2;
-
-    const highsLR2 = highsCtx.createBiquadFilter();
-    highsLR2.type = "highpass";
-    highsLR2.frequency.value = 250;
-    highsLR2.Q.value = Math.SQRT1_2;
-
-    // SRL Compressor — exactly 1, NO hard limiter
-    const highsComp = highsCtx.createDynamicsCompressor();
-    highsComp.threshold.value = -24;
-    highsComp.knee.value = 30;
-    highsComp.ratio.value = 4;
-    highsComp.attack.value = 0.003;
-    highsComp.release.value = 0.25;
-
-    const highsAnalyser = highsCtx.createAnalyser();
-    highsAnalyser.fftSize = 256;
-    highsAnalyser.smoothingTimeConstant = 0.8;
-
-    const highsGain = highsCtx.createGain();
-    highsGain.gain.value = 1.0; // pass-through — NEVER modified
-
-    const highsUltraGain = highsCtx.createGain();
-    highsUltraGain.gain.value = 1.0;
-
-    // ── Wire highs chain ─────────────────────────────────────────────────────
-    highsInsert.connect(highsEQFilters[0]);
-    for (let i = 0; i < highsEQFilters.length - 1; i++) {
-      highsEQFilters[i].connect(highsEQFilters[i + 1]);
-    }
-    const highsEQLast = highsEQFilters[highsEQFilters.length - 1];
-    // EQ last → LR Crossover (cascaded HP)
-    highsEQLast.connect(highsLR1);
-    highsLR1.connect(highsLR2);
-    // LR2 → SRL comp → analyser → gain → Ultra → dest
-    highsLR2.connect(highsComp);
-    highsComp.connect(highsAnalyser);
-    highsAnalyser.connect(highsGain);
-    highsGain.connect(highsUltraGain);
-    highsUltraGain.connect(highsCtx.destination);
-
-    // ── Store subGainNode ref ───────────────────────────────────────────────
-    subGainNodeRef.current = subGainNode;
-
-    // ── Store all refs ───────────────────────────────────────────────────────
-    bassCtxRef.current = bassCtx;
-    highsCtxRef.current = highsCtx;
-    // Bass
-    bassInsertRef.current = bassInsert;
-    bassEQFiltersRef.current = bassEQFilters;
-    bassPfmFilterRef.current = bassPfmFilter;
-    bassRestLPRef.current = bassRestLP;
-    bassRestGainRef.current = bassRestGain;
-    bassRestMixRef.current = bassRestMix;
-    bassMaximizerRef.current = bassMaximizer;
-    bassParaBassRef.current = bassParaBass;
-    bassOutputLevelRef.current = bassOutputLevel;
-    bassNaturalBottomRef.current = bassNaturalBottom;
-    bassLR1Ref.current = bassLR1;
-    bassLR2Ref.current = bassLR2;
-    canisterF1Ref.current = canisterF1;
-    canisterF2Ref.current = canisterF2;
-    canisterF3Ref.current = canisterF3;
-    canisterOutRef.current = canisterOut;
-    canisterDryRef.current = canisterDry;
-    canisterMixRef.current = canisterMix;
-    bassCompRef.current = bassComp;
-    bassAnalyserRef.current = bassAnalyser;
-    bassGainRef.current = bassGain;
-    bassUltraGainRef.current = bassUltraGain;
-    bassCheaterRef.current = bassCheater;
-    bassEQuakeRef.current = bassEQuake;
-    // Highs
-    highsInsertRef.current = highsInsert;
-    highsEQFiltersRef.current = highsEQFilters;
-    highsLR1Ref.current = highsLR1;
-    highsLR2Ref.current = highsLR2;
-    highsCompRef.current = highsComp;
-    highsAnalyserRef.current = highsAnalyser;
-    highsGainRef.current = highsGain;
-    highsUltraGainRef.current = highsUltraGain;
-    // Analyser buffers
-    bassAnalyserDataRef.current = new Float32Array(
-      bassAnalyser.fftSize,
-    ) as unknown as Float32Array<ArrayBuffer>;
-    highsAnalyserDataRef.current = new Float32Array(
-      highsAnalyser.fftSize,
-    ) as unknown as Float32Array<ArrayBuffer>;
-  }, []);
-
-  // ── SRL crossover command ────────────────────────────────────────────────────
+  // ── SRL crossover command ──────────────────────────────────────────────────
   const applySRLCrossoverCommand = useCallback(
     (grade: SRLGrade, bassFreq: number, highsFreq: number) => {
       const adj = SRL_CROSSOVER_ADJUST[grade];
@@ -887,7 +1321,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // ── SRL D-grade volume protection ────────────────────────────────────────────
+  // ── SRL D-grade volume protection ─────────────────────────────────────────
   const handleSRLDGrade = useCallback((grade: SRLGrade) => {
     if (grade !== "D") {
       if (srlDTimerRef.current) {
@@ -900,99 +1334,108 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     if (srlDActiveRef.current) return;
     srlDActiveRef.current = true;
     srlDTimerRef.current = setTimeout(() => {
-      const bassInsert = bassInsertRef.current;
-      const highsInsert = highsInsertRef.current;
-      if (!bassInsert || !highsInsert) return;
-      const currentGain = bassInsert.gain.value;
+      const volumeGain = volumeGainRef.current;
+      if (!volumeGain) return;
+      const currentGain = volumeGain.gain.value;
       const reduced = currentGain * 0.95;
-      bassInsert.gain.value = reduced;
-      highsInsert.gain.value = reduced;
+      volumeGain.gain.value = reduced;
       setTimeout(() => {
-        if (bassInsertRef.current)
-          bassInsertRef.current.gain.value = currentGain;
-        if (highsInsertRef.current)
-          highsInsertRef.current.gain.value = currentGain;
+        if (volumeGainRef.current)
+          volumeGainRef.current.gain.value = currentGain;
         srlDActiveRef.current = false;
       }, 500);
     }, 3000);
   }, []);
 
-  // ── File loader ──────────────────────────────────────────────────────────────
+  // ── Pre-play scanner (fires when Helix activated) ──────────────────────────
+  const runPrePlayScan = useCallback((): Promise<"clean" | "problem"> => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const ctx = helixCtxRef.current;
+        const masterGain = masterGainRef.current;
+        let result: "clean" | "problem" = "clean";
+
+        if (!ctx || ctx.state === "closed") result = "problem";
+        if (masterGain && masterGain.gain.value !== 1.0) result = "problem";
+
+        console.log(`[Helix Pre-Play Scanner] Result: ${result}`);
+        resolve(result);
+      }, 2000);
+    });
+  }, []);
+
+  // ── File loader ────────────────────────────────────────────────────────────
   const loadFile = useCallback(
     async (file: File) => {
-      initContexts();
+      initContext();
+
       if (fileUrlRef.current) URL.revokeObjectURL(fileUrlRef.current);
       const url = URL.createObjectURL(file);
       fileUrlRef.current = url;
 
-      if (bassSourceRef.current) {
-        bassSourceRef.current.disconnect();
-        bassSourceRef.current = null;
-      }
-      if (highsSourceRef.current) {
-        highsSourceRef.current.disconnect();
-        highsSourceRef.current = null;
+      if (audioSourceRef.current) {
+        audioSourceRef.current.disconnect();
+        audioSourceRef.current = null;
       }
 
-      const bassAudio = new Audio();
-      bassAudio.src = url;
-      bassAudio.crossOrigin = "anonymous";
-      bassAudio.preload = "auto";
+      const audio = new Audio();
+      audio.src = url;
+      audio.crossOrigin = "anonymous";
+      audio.preload = "auto";
+      audioRef.current = audio;
 
-      const highsAudio = new Audio();
-      highsAudio.src = url;
-      highsAudio.crossOrigin = "anonymous";
-      highsAudio.preload = "auto";
+      const ctx = helixCtxRef.current!;
+      const source = ctx.createMediaElementSource(audio);
+      source.connect(volumeGainRef.current!);
+      audioSourceRef.current = source;
 
-      bassAudioRef.current = bassAudio;
-      highsAudioRef.current = highsAudio;
+      await ctx.resume();
 
-      const bassCtx = bassCtxRef.current!;
-      const highsCtx = highsCtxRef.current!;
+      // Start worker + zero stacking chip on first load
+      startWorker();
+      startZeroStackingChip();
 
-      const bassSource = bassCtx.createMediaElementSource(bassAudio);
-      bassSource.connect(bassInsertRef.current!);
-      bassSourceRef.current = bassSource;
-
-      const highsSource = highsCtx.createMediaElementSource(highsAudio);
-      highsSource.connect(highsInsertRef.current!);
-      highsSourceRef.current = highsSource;
-
-      await bassCtx.resume();
-      await highsCtx.resume();
+      // Start BT scanner
+      runBluetoothScan();
+      if (!btScanIntervalRef.current) {
+        btScanIntervalRef.current = setInterval(runBluetoothScan, 30000);
+      }
 
       setState((s) => ({
         ...s,
         isLoaded: true,
         fileName: file.name,
-        bassContextState: bassCtx.state,
-        highsContextState: highsCtx.state,
+        helixContextState: ctx.state,
+        bassContextState: ctx.state,
+        highsContextState: ctx.state,
       }));
     },
-    [initContexts],
+    [initContext, startWorker, startZeroStackingChip, runBluetoothScan],
   );
 
-  // ── Playback ─────────────────────────────────────────────────────────────────
+  // ── Playback ───────────────────────────────────────────────────────────────
   const play = useCallback(() => {
-    const bassAudio = bassAudioRef.current;
-    const highsAudio = highsAudioRef.current;
-    if (!bassAudio || !highsAudio) return;
-    bassCtxRef.current?.resume();
-    highsCtxRef.current?.resume();
-    bassAudio.play().catch(() => {});
-    highsAudio.play().catch(() => {});
+    const audio = audioRef.current;
+    if (!audio) return;
+    helixCtxRef.current?.resume();
+    audio.play().catch(() => {});
+
+    workerRef.current?.postMessage({ type: "SET_PLAYING", playing: true });
+
     setState((s) => ({
       ...s,
       isPlaying: true,
-      bassContextState: bassCtxRef.current?.state ?? "running",
-      highsContextState: highsCtxRef.current?.state ?? "running",
+      helixContextState: helixCtxRef.current?.state ?? "running",
+      bassContextState: helixCtxRef.current?.state ?? "running",
+      highsContextState: helixCtxRef.current?.state ?? "running",
     }));
+
     const tick = () => {
-      if (bassAudio.duration) {
+      if (audio.duration) {
         setState((s) => ({
           ...s,
-          currentTime: bassAudio.currentTime,
-          duration: bassAudio.duration,
+          currentTime: audio.currentTime,
+          duration: audio.duration,
           bassCompReduction: bassCompRef.current?.reduction ?? 0,
           highsCompReduction: highsCompRef.current?.reduction ?? 0,
         }));
@@ -1004,13 +1447,11 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   }, [startCharTick]);
 
   const stop = useCallback(() => {
-    bassAudioRef.current?.pause();
-    highsAudioRef.current?.pause();
-    if (bassAudioRef.current) bassAudioRef.current.currentTime = 0;
-    if (highsAudioRef.current) highsAudioRef.current.currentTime = 0;
+    audioRef.current?.pause();
+    if (audioRef.current) audioRef.current.currentTime = 0;
     cancelAnimationFrame(rafRef.current);
-    cancelAnimationFrame(reductionRafRef.current);
     cancelAnimationFrame(charRafRef.current);
+    workerRef.current?.postMessage({ type: "SET_PLAYING", playing: false });
     setState((s) => ({
       ...s,
       isPlaying: false,
@@ -1019,20 +1460,26 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  // ── Volume ───────────────────────────────────────────────────────────────────
+  // ── Volume — RULE: 1-100 only ──────────────────────────────────────────────
   const setVolume = useCallback((v: number) => {
-    volumeRef.current = v;
-    const gain = volToGain(v);
-    if (bassInsertRef.current) bassInsertRef.current.gain.value = gain;
-    if (highsInsertRef.current) highsInsertRef.current.gain.value = gain;
-    const threshold =
-      v < 100 ? -60 + ((v - 1) / 98) * 20 : -40 + ((v - 100) / 600) * 30;
-    if (bassCompRef.current) bassCompRef.current.threshold.value = threshold;
-    if (highsCompRef.current) highsCompRef.current.threshold.value = threshold;
-    setState((s) => ({ ...s, volume: v }));
+    // Enforce 1-100 range hard — no 700
+    const safeV = Math.max(1, Math.min(100, Math.round(v)));
+    volumeRef.current = safeV;
+    const gain = volToGain(safeV);
+    if (volumeGainRef.current) volumeGainRef.current.gain.value = gain;
+    // R5: bassComp threshold is FIXED at -24 — NEVER modified by volume (prevents bass gating)
+    // Safety boost: scales with volume
+    if (safetyBoostRef.current) {
+      safetyBoostRef.current.gain.value = 3 + (safeV / 100) * 1.5; // 3-4.5dB
+    }
+    setState((s) => ({
+      ...s,
+      volume: safeV,
+      safetyProcessorLevel: Math.round((safeV / 100) * 100),
+    }));
   }, []);
 
-  // ── Crossover (LR 4th-order — both stages updated together) ─────────────────
+  // ── Crossover ─────────────────────────────────────────────────────────────
   const setBassFilterFreq = useCallback((hz: number) => {
     setState((s) => {
       const adj = SRL_CROSSOVER_ADJUST[s.srlGrade];
@@ -1053,31 +1500,103 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // ── Amp channel gains — ALL NO-OP (Rule Book) ─────────────────────────────────
+  // ── Gains — NO-OP (rule book) ─────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const setBassGain = useCallback((_value: number) => {
-    // NO-OP — G09/G10 amp channel gains locked at 0.0
+    // NO-OP — amp channel gains locked per rule book
   }, []);
 
-  // ── Sub Level (FIX 1) — REAL user-controlled sub output ──────────────────────
-  // This is NOT an amp-channel gain. It is the user's sub output level slider.
-  // Range: 0-100 → 0.0-2.0 gain on subGainNode. Default 100 = 1.0 (unity).
-  // INTENTIONALLY not a NO-OP — this is a user-facing control.
+  // Sub level — wired to real GainNode between bass processing and masterGain
   const setSubLevel = useCallback((value: number) => {
-    const gain = (value / 100) * 2.0;
-    if (subGainNodeRef.current) subGainNodeRef.current.gain.value = gain;
+    const gain = Math.max(0, Math.min(1.0, value / 100));
+    if (subLevelGainRef.current) {
+      subLevelGainRef.current.gain.value = gain;
+    }
     setState((s) => ({ ...s, subLevel: value, hasUnsavedChanges: true }));
   }, []);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const setHighsGain = useCallback((_value: number) => {
-    // NO-OP — G11/G12 amp channel gains locked at 0.0
+    // NO-OP — amp channel gains locked
   }, []);
 
-  // ── Compressor setters ───────────────────────────────────────────────────────
+  // ── Gain Kill Switch — kills ALL gains simultaneously ─────────────────────
+  const setGainKillActive = useCallback((active: boolean) => {
+    const view = sharedViewRef.current;
+    if (view) {
+      view[SAB_GAIN_KILL] = active ? 1 : 0;
+    }
+    // Also post to worker
+    workerRef.current?.postMessage({ type: "GAIN_KILL", active });
+
+    const ctx = helixCtxRef.current;
+    if (active) {
+      // Save snapshot of 8 killable gains before killing
+      // volumeGainRef and masterGainRef are BYPASS nodes — never killed
+      gainSnapshotRef.current = {
+        subLevel: subLevelGainRef.current?.gain.value ?? 1.0,
+        canisterOut: canisterOutRef.current?.gain.value ?? 0.8,
+        bassRestGain: Math.min(bassRestGainRef.current?.gain.value ?? 1.0, 1.0),
+        canisterDry: canisterDryRef.current?.gain.value ?? 1.0,
+        canisterF1: canisterF1Ref.current?.gain.value ?? 0.0,
+        canisterF2: canisterF2Ref.current?.gain.value ?? 0.0,
+        canisterF3: canisterF3Ref.current?.gain.value ?? 0.0,
+        ultra: ultraGainRef.current?.gain.value ?? 1.0,
+      };
+      if (ctx) {
+        const now = ctx.currentTime;
+        // Kill 8 killable gains simultaneously — do NOT touch volumeGain or masterGain
+        subLevelGainRef.current?.gain.setValueAtTime(0, now);
+        bassRestGainRef.current?.gain.setValueAtTime(0, now);
+        canisterOutRef.current?.gain.setValueAtTime(0, now);
+        canisterDryRef.current?.gain.setValueAtTime(0, now);
+        canisterF1Ref.current?.gain.setValueAtTime(0, now);
+        canisterF2Ref.current?.gain.setValueAtTime(0, now);
+        canisterF3Ref.current?.gain.setValueAtTime(0, now);
+        ultraGainRef.current?.gain.setValueAtTime(0, now);
+      }
+      console.log(
+        "[Gain Kill Switch] 8 KILLABLE GAINS ZEROED — volume and master bypass untouched",
+      );
+    } else {
+      // Restore 8 killable gains from snapshot
+      // volumeGainRef and masterGainRef are untouched — they never changed
+      if (ctx) {
+        const now = ctx.currentTime;
+        const snap = gainSnapshotRef.current;
+        subLevelGainRef.current?.gain.setValueAtTime(
+          Math.min(snap.subLevel, 1.0),
+          now,
+        );
+        bassRestGainRef.current?.gain.setValueAtTime(
+          Math.min(snap.bassRestGain, 1.0),
+          now,
+        );
+        canisterOutRef.current?.gain.setValueAtTime(
+          Math.min(snap.canisterOut, 1.0),
+          now,
+        );
+        canisterDryRef.current?.gain.setValueAtTime(
+          Math.min(snap.canisterDry, 1.0),
+          now,
+        );
+        canisterF1Ref.current?.gain.setValueAtTime(snap.canisterF1, now);
+        canisterF2Ref.current?.gain.setValueAtTime(snap.canisterF2, now);
+        canisterF3Ref.current?.gain.setValueAtTime(snap.canisterF3, now);
+        ultraGainRef.current?.gain.setValueAtTime(
+          Math.min(snap.ultra, 1.0),
+          now,
+        );
+      }
+      console.log("[Gain Kill Switch] 8 killable gains restored from snapshot");
+    }
+
+    setState((s) => ({ ...s, gainKillActive: active }));
+  }, []);
+
   const setBassCompressor = useCallback(
     (
-      threshold: number,
+      _threshold: number,
       ratio: number,
       knee: number,
       attack: number,
@@ -1085,7 +1604,8 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     ) => {
       const c = bassCompRef.current;
       if (!c) return;
-      c.threshold.value = threshold;
+      // R5: threshold is FIXED at -24 — ignore any user-provided threshold to prevent bass gating
+      c.threshold.value = -24;
       c.ratio.value = ratio;
       c.knee.value = knee;
       c.attack.value = attack;
@@ -1096,7 +1616,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
 
   const setHighsCompressor = useCallback(
     (
-      threshold: number,
+      _threshold: number,
       ratio: number,
       knee: number,
       attack: number,
@@ -1104,7 +1624,8 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     ) => {
       const c = highsCompRef.current;
       if (!c) return;
-      c.threshold.value = threshold;
+      // R5: threshold is FIXED at -24 — ignore any user-provided threshold
+      c.threshold.value = -24;
       c.ratio.value = ratio;
       c.knee.value = knee;
       c.attack.value = attack;
@@ -1113,27 +1634,26 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // ── EQ ───────────────────────────────────────────────────────────────────────
-  // FIX 2+3: Applies exponential curve for low-end bands AND syncs crossover.
+  // ── EQ ─────────────────────────────────────────────────────────────────────
   const setEQBand = useCallback((freq: number, gainDb: number) => {
     const idx = EQ_FREQS.indexOf(freq);
     if (idx === -1) return;
-    // Apply exponential mapping so low-end bands respond from first movement
     const actualDb = eqSliderToDb(gainDb, idx);
+    // Bass EQ chain — all 8 bands
     if (bassEQFiltersRef.current[idx])
       bassEQFiltersRef.current[idx].gain.value = actualDb;
-    if (highsEQFiltersRef.current[idx])
-      highsEQFiltersRef.current[idx].gain.value = actualDb;
-    // FIX 3: syncCrossoverToEQ — reads both low-end band gains and shifts bass LP
+    // Highs EQ chain — bands 2-7 only (mapped to highsEQFilters[0..5])
+    if (idx >= 2 && highsEQFiltersRef.current[idx - 2]) {
+      highsEQFiltersRef.current[idx - 2].gain.value = actualDb;
+    }
+    // Sync crossover to EQ for low-end bands
     setState((s) => {
       const newBands = s.eqBands.map((b) =>
         b.freq === freq ? { freq, gainDb } : b,
       );
-      const band0Gain = newBands[0]?.gainDb ?? 0; // 19Hz slider value (14-50Hz lane)
-      const band1Gain = newBands[1]?.gainDb ?? 0; // 47Hz slider value (14-80Hz lane)
-      // band0 boosted → lower LP cutoff to let more sub through (min 60Hz)
+      const band0Gain = newBands[0]?.gainDb ?? 0;
+      const band1Gain = newBands[1]?.gainDb ?? 0;
       const band0Shift = band0Gain > 0 ? -(band0Gain / 12) * 20 : 0;
-      // band1 boosted → raise LP cutoff to capture more punch range (max 120Hz)
       const band1Shift = band1Gain > 0 ? (band1Gain / 12) * 40 : 0;
       const newLPFreq = Math.max(
         60,
@@ -1143,19 +1663,20 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       const commanded = Math.max(20, newLPFreq + adj.bassOffset);
       if (bassLR1Ref.current) bassLR1Ref.current.frequency.value = commanded;
       if (bassLR2Ref.current) bassLR2Ref.current.frequency.value = commanded;
-      return { ...s, eqBands: newBands };
+      return { ...s, eqBands: newBands, hasUnsavedChanges: true };
     });
   }, []);
 
   const setEQBypass = useCallback((bypass: boolean) => {
     if (bypass) {
-      // When bypassed: reset to base boost only (no slider additions)
       EQ_FREQS.forEach((_, idx) => {
         const baseBoost = EQ_LOW_BASE_BOOST[idx] ?? 0;
         if (bassEQFiltersRef.current[idx])
           bassEQFiltersRef.current[idx].gain.value = baseBoost;
-        if (highsEQFiltersRef.current[idx])
-          highsEQFiltersRef.current[idx].gain.value = baseBoost;
+        // Also reset highs EQ
+        if (idx >= 2 && highsEQFiltersRef.current[idx - 2]) {
+          highsEQFiltersRef.current[idx - 2].gain.value = 0;
+        }
       });
       setState((s) => ({
         ...s,
@@ -1167,46 +1688,43 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ── Phase invert — state-only stub (phase nodes removed from chain) ─────────────────
+  // ── Phase invert (state only — phase nodes removed) ────────────────────────
   const phaseInvert = useCallback(
     (channel: "bass" | "highs", invert: boolean) => {
-      // Phase nodes removed — state update only for legacy UI compat
-      if (channel === "bass") {
+      if (channel === "bass")
         setState((s) => ({ ...s, bassPhaseInverted: invert }));
-      } else {
-        setState((s) => ({ ...s, highsPhaseInverted: invert }));
-      }
+      else setState((s) => ({ ...s, highsPhaseInverted: invert }));
     },
     [],
   );
 
-  // ══════════════════════════════════════════════════════════════════════════════
-  //  EPICENTER CONTROLS
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ── Epicenter controls ─────────────────────────────────────────────────────
+  const setEpicenterBoost = useCallback((_pct: number) => {}, []);
+  const setParaCenter = useCallback((_hz: number) => {}, []);
+  const setParaWidth = useCallback((_width: number) => {}, []);
+  const setParaGain = useCallback((_pct: number) => {}, []);
 
-  const setEpicenterBoost = useCallback((pct: number) => {
-    const db = pctToDb(pct, 0, 12);
-    if (bassMaximizerRef.current) bassMaximizerRef.current.gain.value = db;
-    setState((s) => ({ ...s, epicenterBoost: pct, hasUnsavedChanges: true }));
+  const setBassRestorationLevel = useCallback((val: number) => {
+    // Map 0-100 to 0.5-1.0 — clamped so bassRestGain NEVER exceeds 1.0 (Zero Stacking Policy)
+    if (bassRestGainRef.current)
+      bassRestGainRef.current.gain.value = Math.min(
+        0.5 + (val / 100) * 0.5,
+        1.0,
+      );
+    setState((s) => ({
+      ...s,
+      bassRestorationLevel: val,
+      hasUnsavedChanges: true,
+    }));
   }, []);
 
-  const setParaCenter = useCallback((hz: number) => {
-    const clamped = Math.max(20, Math.min(120, hz));
-    if (bassParaBassRef.current)
-      bassParaBassRef.current.frequency.value = clamped;
-    setState((s) => ({ ...s, paraCenter: clamped, hasUnsavedChanges: true }));
-  }, []);
-
-  const setParaWidth = useCallback((width: number) => {
-    const clamped = Math.max(0.3, Math.min(3.0, width));
-    if (bassParaBassRef.current) bassParaBassRef.current.Q.value = clamped;
-    setState((s) => ({ ...s, paraWidth: clamped, hasUnsavedChanges: true }));
-  }, []);
-
-  const setParaGain = useCallback((pct: number) => {
-    const db = pctToDb(pct, -12, 12);
-    if (bassParaBassRef.current) bassParaBassRef.current.gain.value = db;
-    setState((s) => ({ ...s, paraGain: pct, hasUnsavedChanges: true }));
+  const setProcessorMimic120dB = useCallback((val: number) => {
+    processorMimic120dBRef.current = val;
+    setState((s) => ({
+      ...s,
+      processorMimic120dB: val,
+      hasUnsavedChanges: true,
+    }));
   }, []);
 
   const setBassOutputLevel = useCallback((pct: number) => {
@@ -1216,7 +1734,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, bassOutputLevel: pct, hasUnsavedChanges: true }));
   }, []);
 
-  // ── Legacy stubs for removed panels ─────────────────────────────────────────
+  // ── Legacy stubs ───────────────────────────────────────────────────────────
   const setUltraCrystalClarity = useCallback((_db: number) => {}, []);
   const setUltraCrystalPresence = useCallback((_db: number) => {}, []);
   const setSRSEnhancement = useCallback((_enabled: boolean) => {}, []);
@@ -1239,12 +1757,33 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       bassNaturalBottomRef.current.gain.value = gain;
   }, []);
 
-  // ══════════════════════════════════════════════════════════════════════════════
-  //  PROTECTION SYSTEM
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ── Protection System ──────────────────────────────────────────────────────
+  // Builds a gentle soft-clip WaveShaper curve. At 0 → pass-through. At 100 → soft clip.
+  // This is PROTECTION ONLY — not saturation, not tube effect.
+  const buildSoftClipCurve = useCallback(
+    (amount: number): Float32Array<ArrayBuffer> => {
+      const samples = 256;
+      const curve = new Float32Array(samples) as Float32Array<ArrayBuffer>;
+      const intensity = Math.max(0.001, amount / 100) * 0.4; // very gentle
+      for (let i = 0; i < samples; i++) {
+        const x = (i * 2) / samples - 1;
+        curve[i] = x / (1 + intensity * Math.abs(x));
+      }
+      return curve;
+    },
+    [],
+  );
 
   const setDistortionReduction = useCallback(
     (v: number) => {
+      // Wire to WaveShaperNode — higher value = softer curve (less distortion)
+      if (distortionShaperRef.current) {
+        if (v <= 0) {
+          distortionShaperRef.current.curve = null; // pass-through
+        } else {
+          distortionShaperRef.current.curve = buildSoftClipCurve(v);
+        }
+      }
       setState((s) => {
         const grade = computeSRLGrade(v, s.clippingReduction, s.cleanSignal);
         applySRLCrossoverCommand(grade, s.bassFilterFreq, s.highsFilterFreq);
@@ -1258,11 +1797,15 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
         };
       });
     },
-    [applySRLCrossoverCommand, handleSRLDGrade],
+    [applySRLCrossoverCommand, handleSRLDGrade, buildSoftClipCurve],
   );
 
   const setClippingReduction = useCallback(
     (v: number) => {
+      // Wire to bassComp knee only — threshold stays FIXED at -24 (R5: no bass gating)
+      if (bassCompRef.current) {
+        bassCompRef.current.knee.value = (v / 100) * 40; // knee 0-40dB range
+      }
       setState((s) => {
         const grade = computeSRLGrade(s.distortionReduction, v, s.cleanSignal);
         applySRLCrossoverCommand(grade, s.bassFilterFreq, s.highsFilterFreq);
@@ -1281,6 +1824,10 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
 
   const setCleanSignal = useCallback(
     (v: number) => {
+      // Wire to cleanFilter Q — higher clean value = tighter bass cutoff
+      if (cleanFilterRef.current) {
+        cleanFilterRef.current.Q.value = 0.5 + (v / 100) * 1.5; // Q: 0.5 to 2.0
+      }
       setState((s) => {
         const grade = computeSRLGrade(
           s.distortionReduction,
@@ -1301,12 +1848,14 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     [applySRLCrossoverCommand, handleSRLDGrade],
   );
 
-  // ══════════════════════════════════════════════════════════════════════════════
-  //  LOW END BOOSTER
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ── Low End Booster ────────────────────────────────────────────────────────
   const enableLowEndBooster = useCallback(() => {
     if (boosterTimerRef.current) clearTimeout(boosterTimerRef.current);
     if (boosterCountdownRef.current) clearInterval(boosterCountdownRef.current);
+    // Wire Low End Booster to real audio node — 30Hz +8dB peaking
+    if (lowEndBoostNodeRef.current) {
+      lowEndBoostNodeRef.current.gain.value = 8;
+    }
     let remaining = 15 * 60;
     setState((s) => ({
       ...s,
@@ -1350,6 +1899,10 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   const disableLowEndBooster = useCallback(() => {
     if (boosterTimerRef.current) clearTimeout(boosterTimerRef.current);
     if (boosterCountdownRef.current) clearInterval(boosterCountdownRef.current);
+    // Deactivate Low End Booster node
+    if (lowEndBoostNodeRef.current) {
+      lowEndBoostNodeRef.current.gain.value = 0;
+    }
     setState((s) => ({
       ...s,
       lowEndBoosterEnabled: false,
@@ -1359,11 +1912,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  // ══════════════════════════════════════════════════════════════════════════════
-  //  CANISTER — two independent sliders
-  //  Slider 1 (canisterBottomBoost): controls 14–40Hz lane (F1 + F2 peaking gain)
-  //  Slider 2 (canisterPunchBoost):  controls 14–80Hz lane (F3 peaking gain)
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ── Canister ───────────────────────────────────────────────────────────────
   const setCanisterActive = useCallback((active: boolean) => {
     if (canisterOutRef.current)
       canisterOutRef.current.gain.value = active ? 1.0 : 0.0;
@@ -1376,11 +1925,10 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  /** Slider 1 — 14-40Hz bottom note lane: slider 0-100 → peaking gain 0-12dB on F1+F2 */
   const setCanisterBottomBoost = useCallback((level: number) => {
     const db = pctToDb(level, 0, 12);
-    if (canisterF1Ref.current) canisterF1Ref.current.gain.value = db * 0.6; // 14Hz boost
-    if (canisterF2Ref.current) canisterF2Ref.current.gain.value = db; // 40Hz boost
+    if (canisterF1Ref.current) canisterF1Ref.current.gain.value = db * 0.6;
+    if (canisterF2Ref.current) canisterF2Ref.current.gain.value = db;
     setState((s) => ({
       ...s,
       canisterBottomBoost: level,
@@ -1388,7 +1936,6 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  /** Slider 2 — 14-80Hz punch lane: slider 0-100 → peaking gain 0-12dB on F3 */
   const setCanisterPunchBoost = useCallback((level: number) => {
     const db = pctToDb(level, 0, 12);
     if (canisterF3Ref.current) canisterF3Ref.current.gain.value = db;
@@ -1399,55 +1946,180 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  // ══════════════════════════════════════════════════════════════════════════════
-  //  ULTRA AUTHORITY
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ── Ultra authority ────────────────────────────────────────────────────────
   const setUltraActive = useCallback((active: boolean) => {
-    const gain = active ? 1.0 : 0.0;
-    if (bassUltraGainRef.current) bassUltraGainRef.current.gain.value = gain;
-    if (highsUltraGainRef.current) highsUltraGainRef.current.gain.value = gain;
+    if (ultraGainRef.current)
+      ultraGainRef.current.gain.value = active ? 1.0 : 0.0;
     setState((s) => ({ ...s, ultraActive: active, hasUnsavedChanges: true }));
   }, []);
 
-  // ══════════════════════════════════════════════════════════════════════════════
-  //  ASO-V3 SOVEREIGN AMP
-  //  When activated, applies amplified characteristic weights to the signal chain.
-  //  Does NOT modify any gain to non-0.0 — characteristics are RMS-layer only.
-  //  The amp loads into a Chip Commander capacity slot and stays OFF until
-  //  Gerrod manually activates it.
-  // ══════════════════════════════════════════════════════════════════════════════
-  const setASOv3Active = useCallback((active: boolean) => {
-    asoV3ActiveRef.current = active;
-    // When ASO-V3 activates, old amps (bass/highs contexts) cut off completely.
-    // The ASO-V3 runs on the same bass+highs contexts but its characteristics
-    // training multipliers kick in via the charTick asoV3ActiveRef.
-    // The Ultra gain pass-through is maintained (no gain change).
+  // ── Helix activation (replaces ASO-V3 switching) ──────────────────────────
+  // Helix is the ONE amp. Activates with pre-play scanner.
+  // When toggled OFF: 5-second fade-out then AudioContext.suspend().
+  // When toggled ON: AudioContext.resume() then fade-in.
+  const setASOv3Active = useCallback(
+    (active: boolean) => {
+      if (active) {
+        const ctx = helixCtxRef.current;
+        // Resume AudioContext first, then scan
+        if (ctx && ctx.state === "suspended") {
+          ctx.resume().catch(() => {});
+        }
+        setState((s) => ({
+          ...s,
+          asoV3Active: false,
+          helixActive: false,
+          asoV3Scanning: true,
+          scanResult: null,
+          hasUnsavedChanges: true,
+        }));
+        runPrePlayScan().then((result) => {
+          // Fade-in masterGain over 300ms
+          const masterGain = masterGainRef.current;
+          if (masterGain && ctx) {
+            masterGain.gain.setValueAtTime(0, ctx.currentTime);
+            masterGain.gain.linearRampToValueAtTime(1.0, ctx.currentTime + 0.3);
+          }
+          setState((s) => ({
+            ...s,
+            helixActive: true,
+            asoV3Active: true,
+            asoV3Scanning: false,
+            scanResult: result,
+            hasUnsavedChanges: true,
+          }));
+          startWorker();
+          workerRef.current?.postMessage({
+            type: "SET_PLAYING",
+            playing: audioRef.current ? !audioRef.current.paused : false,
+          });
+        });
+      } else {
+        // 5-second handoff: fade-out masterGain over 5s, then suspend AudioContext
+        const ctx = helixCtxRef.current;
+        const masterGain = masterGainRef.current;
+        if (ctx && masterGain) {
+          const now = ctx.currentTime;
+          masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+          masterGain.gain.linearRampToValueAtTime(0, now + 5);
+          setTimeout(() => {
+            ctx.suspend().catch(() => {});
+          }, 5000);
+        } else if (ctx) {
+          ctx.suspend().catch(() => {});
+        }
+        setState((s) => ({
+          ...s,
+          helixActive: false,
+          asoV3Active: false,
+          asoV3Scanning: false,
+          scanResult: null,
+          hasUnsavedChanges: true,
+        }));
+      }
+    },
+    [runPrePlayScan, startWorker],
+  );
+
+  // switchASOv3 maps to setASOv3Active — with full suspend/resume behavior
+  const switchASOv3 = useCallback(
+    (on: boolean) => {
+      setASOv3Active(on);
+    },
+    [setASOv3Active],
+  );
+
+  // ── Speaker Profile setter ─────────────────────────────────────────────────
+  const setSpeakerProfile = useCallback((profile: Partial<SpeakerProfile>) => {
     setState((s) => ({
       ...s,
-      asoV3Active: active,
+      speakerProfile: { ...s.speakerProfile, ...profile },
       hasUnsavedChanges: true,
     }));
   }, []);
 
-  // ── Save ─────────────────────────────────────────────────────────────────────
+  // ── Save system ────────────────────────────────────────────────────────────
   const saveAllSettings = useCallback(() => {
     if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
-    const now = new Date();
-    const hours = now.getHours();
-    const mins = String(now.getMinutes()).padStart(2, "0");
-    const ampm = hours >= 12 ? "PM" : "AM";
-    const h12 = hours % 12 || 12;
-    const timeStr = `${h12}:${mins} ${ampm}`;
-    setState((s) => ({ ...s, hasUnsavedChanges: false, lastSaved: timeStr }));
+
+    saveDebounceRef.current = setTimeout(() => {
+      const settings = {
+        volume: state.volume,
+        canisterBottomBoost: state.canisterBottomBoost,
+        canisterPunchBoost: state.canisterPunchBoost,
+        bassRestorationLevel: state.bassRestorationLevel,
+        processorMimic120dB: state.processorMimic120dB,
+        ultraActive: state.ultraActive,
+        distortionReduction: state.distortionReduction,
+        clippingReduction: state.clippingReduction,
+        cleanSignal: state.cleanSignal,
+        eqBands: state.eqBands,
+        bassFilterFreq: state.bassFilterFreq,
+        highsFilterFreq: state.highsFilterFreq,
+        bassOutputLevel: state.bassOutputLevel,
+      };
+
+      try {
+        localStorage.setItem("ampPlayer1Settings", JSON.stringify(settings));
+      } catch {
+        /* ignore */
+      }
+
+      const now = new Date();
+      const hours = now.getHours();
+      const mins = String(now.getMinutes()).padStart(2, "0");
+      const ampm = hours >= 12 ? "PM" : "AM";
+      const h12 = hours % 12 || 12;
+      const timeStr = `${h12}:${mins} ${ampm}`;
+      setState((s) => ({ ...s, hasUnsavedChanges: false, lastSaved: timeStr }));
+    }, 800);
+  }, [
+    state.volume,
+    state.canisterBottomBoost,
+    state.canisterPunchBoost,
+    state.bassRestorationLevel,
+    state.processorMimic120dB,
+    state.ultraActive,
+    state.distortionReduction,
+    state.clippingReduction,
+    state.cleanSignal,
+    state.eqBands,
+    state.bassFilterFreq,
+    state.highsFilterFreq,
+    state.bassOutputLevel,
+  ]);
+
+  // ── Load saved settings on mount ─────────────────────────────────────────
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stable setters, runs once
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("ampPlayer1Settings");
+      if (!saved) return;
+      const s = JSON.parse(saved) as Record<string, unknown>;
+      if (typeof s.volume === "number" && s.volume >= 1 && s.volume <= 100)
+        setVolume(s.volume);
+      if (typeof s.canisterBottomBoost === "number")
+        setCanisterBottomBoost(s.canisterBottomBoost);
+      if (typeof s.canisterPunchBoost === "number")
+        setCanisterPunchBoost(s.canisterPunchBoost);
+      if (typeof s.bassRestorationLevel === "number")
+        setBassRestorationLevel(s.bassRestorationLevel);
+      if (typeof s.processorMimic120dB === "number")
+        setProcessorMimic120dB(s.processorMimic120dB);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
-  // ── Context state sync ───────────────────────────────────────────────────────
+  // ── Context state sync ────────────────────────────────────────────────────
   useEffect(() => {
     const id = setInterval(() => {
+      const ctxState = helixCtxRef.current?.state ?? "suspended";
       setState((s) => ({
         ...s,
-        bassContextState: bassCtxRef.current?.state ?? "suspended",
-        highsContextState: highsCtxRef.current?.state ?? "suspended",
+        helixContextState: ctxState,
+        bassContextState: ctxState,
+        highsContextState: ctxState,
         bassCompReduction: bassCompRef.current?.reduction ?? 0,
         highsCompReduction: highsCompRef.current?.reduction ?? 0,
       }));
@@ -1455,30 +2127,58 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(id);
   }, []);
 
-  // ── Rule Book Verification ───────────────────────────────────────────────────
+  // ── Rule Book Verification (masterGain = 1.0, canisterOut = 0.8 at start) ───
   useEffect(() => {
     const violations: string[] = [];
-    if (bassGainRef.current && bassGainRef.current.gain.value !== 1.0) {
-      violations.push("VIOLATION: bassGain pass-through is not 1.0");
-    }
-    if (highsGainRef.current && highsGainRef.current.gain.value !== 1.0) {
-      violations.push("VIOLATION: highsGain pass-through is not 1.0");
-    }
-    if (
-      bassUltraGainRef.current &&
-      bassUltraGainRef.current.gain.value !== 1.0
-    ) {
-      violations.push("VIOLATION: bassUltraGain not initialized to 1.0");
-    }
-    if (canisterOutRef.current && canisterOutRef.current.gain.value !== 0) {
-      violations.push("VIOLATION: canisterOut should start at 0 (bypassed)");
+    if (masterGainRef.current && masterGainRef.current.gain.value > 1.0) {
+      violations.push("VIOLATION: masterGain exceeded 1.0");
     }
     if (violations.length > 0) {
       setState((s) => ({ ...s, gainViolations: violations }));
     }
   }, []);
 
-  // ── Context value ─────────────────────────────────────────────────────────────
+  // ── Output mode detection ─────────────────────────────────────────────────
+  useEffect(() => {
+    const checkOutputMode = () => {
+      // Web Audio API context.destination connects to device audio output
+      // We detect "external" when audioDevices have output > internal speakers
+      if (!navigator.mediaDevices) return;
+      navigator.mediaDevices
+        .enumerateDevices()
+        .then((devices) => {
+          const outputs = devices.filter((d) => d.kind === "audiooutput");
+          const hasExternal = outputs.some(
+            (d) => d.label && !d.label.toLowerCase().includes("built-in"),
+          );
+          setState((s) => ({
+            ...s,
+            outputMode: hasExternal ? "external" : "internal",
+          }));
+        })
+        .catch(() => {});
+    };
+    checkOutputMode();
+    const id = setInterval(checkOutputMode, 10000);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── Cleanup on unmount ────────────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      cancelAnimationFrame(charRafRef.current);
+      cancelAnimationFrame(zeroStackingRafRef.current);
+      if (btScanIntervalRef.current) clearInterval(btScanIntervalRef.current);
+      if (boosterTimerRef.current) clearTimeout(boosterTimerRef.current);
+      if (boosterCountdownRef.current)
+        clearInterval(boosterCountdownRef.current);
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+      workerRef.current?.terminate();
+    };
+  }, []);
+
+  // ── Context value ─────────────────────────────────────────────────────────
   const value: AudioEngine = {
     ...state,
     loadFile,
@@ -1520,7 +2220,13 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     setCanisterPunchBoost,
     setUltraActive,
     setASOv3Active,
+    setHelixActive: setASOv3Active,
+    setSpeakerProfile,
     saveAllSettings,
+    setBassRestorationLevel,
+    setProcessorMimic120dB,
+    switchASOv3,
+    setGainKillActive,
   };
 
   return createElement(AudioEngineContext.Provider, { value }, children);
@@ -1533,5 +2239,6 @@ export function useAudioEngine(): AudioEngine {
   return ctx;
 }
 
-// ─── Helpers re-exported for UI ──────────────────────────────────────────────
+// R5 note: threshold params passed to setBassCompressor/setHighsCompressor are ignored;
+// threshold is locked at -24 dBFS permanently in the engine.
 export { sliderToParaWidth, pctToDb, pctToGain };

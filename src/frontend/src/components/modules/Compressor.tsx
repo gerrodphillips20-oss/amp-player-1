@@ -1,16 +1,7 @@
 import { useAudioEngine } from "@/hooks/useAudioEngine";
-import { useState } from "react";
 
 export default function Compressor() {
   const engine = useAudioEngine();
-  const [threshold, setThreshold] = useState(-24);
-  const [ratio] = useState(4);
-
-  const handleThreshold = (v: number) => {
-    setThreshold(v);
-    engine.setBassCompressor(v, ratio, 30, 0.003, 0.25);
-    engine.setHighsCompressor(v, ratio, 30, 0.003, 0.25);
-  };
 
   const reduction =
     Math.round(
@@ -30,14 +21,18 @@ export default function Compressor() {
         DYNAMICS COMPRESSOR • SMART RANGE LIMITER
       </div>
 
+      {/* Fixed threshold — not user adjustable (prevents bass gating) */}
       <div
-        className="py-2 border-b"
-        style={{ borderColor: "rgba(0,212,255,0.1)" }}
+        className="px-3 py-2 rounded"
+        style={{
+          background: "rgba(0,212,255,0.05)",
+          border: "1px solid rgba(0,212,255,0.2)",
+        }}
       >
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between">
           <span
             className="text-xs font-bold uppercase tracking-widest"
-            style={{ color: "rgba(0,212,255,0.8)" }}
+            style={{ color: "rgba(0,212,255,0.7)" }}
           >
             THRESHOLD
           </span>
@@ -45,28 +40,22 @@ export default function Compressor() {
             className="text-xs font-mono font-bold"
             style={{ color: "#ffd700" }}
           >
-            {threshold} dBFS
+            -24 dBFS — FIXED
           </span>
         </div>
-        <input
-          data-ocid="compressor.threshold_slider"
-          type="range"
-          min={-60}
-          max={0}
-          value={threshold}
-          onChange={(e) => handleThreshold(Number(e.target.value))}
-          className="w-full"
-          style={{ accentColor: "#00d4ff" }}
-        />
+        <div className="text-xs mt-1" style={{ color: "rgba(0,212,255,0.4)" }}>
+          Smart Range Limiter monitors only — threshold locked to prevent bass
+          gating
+        </div>
       </div>
 
       {[
-        ["RATIO", `${ratio}:1`],
+        ["RATIO", "4:1"],
         ["KNEE", "30 dB"],
         ["ATTACK", "3 ms"],
         ["RELEASE", "250 ms"],
         ["GAIN REDUCTION", `${reduction} dB`],
-        ["VOLUME RANGE", "1-700"],
+        ["VOLUME RANGE", "1-100"],
       ].map(([k, v]) => (
         <div
           key={k}
@@ -89,7 +78,7 @@ export default function Compressor() {
       ))}
 
       <div className="mt-2 text-xs" style={{ color: "rgba(0,212,255,0.5)" }}>
-        VOLUME 1-700: 20 SMART CHIPS + 30 FILTERS ACTIVE FROM 100-700
+        VOLUME 1-100: SMART CHIPS + FILTERS ACTIVE ACROSS FULL RANGE
       </div>
     </div>
   );

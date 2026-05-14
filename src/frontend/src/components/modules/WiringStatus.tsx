@@ -10,12 +10,12 @@ export default function WiringStatus() {
   const CONNECTIONS = [
     { from: "THUNDER BATTERY", to: "SIGNAL BOOSTER", gauge: "4 AWG" },
     { from: "SIGNAL BOOSTER", to: "CHIP COMMANDER", gauge: "4 AWG" },
-    { from: "CHIP COMMANDER", to: "BASS AMP", gauge: "4 AWG" },
-    { from: "CHIP COMMANDER", to: "MIDS AMP", gauge: "4 AWG" },
-    { from: "HEAD UNIT", to: "BASS AMP (RCA SET 1)", gauge: "RCA" },
-    { from: "HEAD UNIT", to: "MIDS AMP (RCA SET 2)", gauge: "RCA" },
-    { from: "BASS AMP", to: "SUBWOOFER", gauge: "4 AWG" },
-    { from: "MIDS AMP", to: "SPEAKERS", gauge: "4 AWG" },
+    { from: "CHIP COMMANDER", to: "HELIX DSP AMP", gauge: "4 AWG" },
+    { from: "CHIP COMMANDER", to: "INTELLIGENCE LAYER", gauge: "4 AWG" },
+    { from: "HEAD UNIT", to: "HELIX DSP AMP (RCA SET 1)", gauge: "RCA" },
+    { from: "HEAD UNIT", to: "INTELLIGENCE LAYER (RCA SET 2)", gauge: "RCA" },
+    { from: "HELIX DSP AMP", to: "SUBWOOFER", gauge: "4 AWG" },
+    { from: "VDA PROCESSOR", to: "SPEAKERS", gauge: "4 AWG" },
   ];
 
   return (

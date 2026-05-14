@@ -8,15 +8,15 @@ export default function FuseMonitor() {
   const fuses = [
     {
       id: 1,
-      label: "FUSE 1 — BASS POWER",
-      status: bassOk ? "INTACT" : "STANDBY",
+      label: "FUSE 1 — NOMINAL",
+      status: bassOk ? "NOMINAL" : "STANDBY",
       rating: "150A",
       ok: bassOk,
     },
     {
       id: 2,
-      label: "FUSE 2 — HIGHS POWER",
-      status: highsOk ? "INTACT" : "STANDBY",
+      label: "FUSE 2 — NOMINAL",
+      status: highsOk ? "NOMINAL" : "STANDBY",
       rating: "100A",
       ok: highsOk,
     },
@@ -74,6 +74,27 @@ export default function FuseMonitor() {
       <div
         className="p-3 rounded mt-2"
         style={{
+          background: "rgba(0,255,136,0.05)",
+          border: "1px solid rgba(0,255,136,0.2)",
+        }}
+      >
+        <div
+          className="text-xs font-bold uppercase tracking-widest"
+          style={{ color: "#00ff88" }}
+        >
+          688 PROTECTION STAGES ACTIVE
+        </div>
+        <div
+          className="text-xs mt-1 font-mono"
+          style={{ color: "rgba(0,255,136,0.5)" }}
+        >
+          344,000 BATTERIES — 688 FUSES — HELIX AMP PROTECTED
+        </div>
+      </div>
+
+      <div
+        className="p-3 rounded mt-2"
+        style={{
           background: "rgba(0,212,255,0.05)",
           border: "1px solid rgba(0,212,255,0.15)",
         }}
@@ -88,7 +109,7 @@ export default function FuseMonitor() {
           className="text-xs mt-1 font-mono"
           style={{ color: "rgba(0,212,255,0.4)" }}
         >
-          BROWSER → FUSE → MILLIWATTS → POWER FLOW
+          BROWSER → FUSE → MILLIWATTS → HELIX AMP
         </div>
       </div>
     </div>

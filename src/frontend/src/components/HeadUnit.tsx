@@ -205,7 +205,7 @@ export default function HeadUnit() {
             data-ocid="head_unit.volume_slider"
             type="range"
             min={1}
-            max={700}
+            max={100}
             value={engine.volume}
             onChange={(e) => engine.setVolume(Number(e.target.value))}
             className="flex-1 accent-cyan-400 h-2"
@@ -222,7 +222,7 @@ export default function HeadUnit() {
             {engine.volume}
           </span>
           <span className="text-xs" style={{ color: "rgba(0,212,255,0.5)" }}>
-            / 700
+            / 100
           </span>
         </div>
 

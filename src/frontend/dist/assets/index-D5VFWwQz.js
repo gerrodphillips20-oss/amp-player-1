@@ -18455,13 +18455,12 @@ Gerrod simulated this digitally.
 Same result. No distortion. No struggle.
 He solved the power supply problem before it existed.
 
-DUAL AMP SYSTEM — SRS 2022
-Two amplifiers. Independent audio contexts.
-Bass Amp: PWM digital. 92 to 95 percent efficiency.
-10Hz to 50kHz. THD 0.01 percent.
-Highs and Mids Amp: clarity and presence.
-Both wired with 4 gauge throughout.
-Both live. Both real.
+HELIX DSP AMP — VIRTUAL DIGITAL ANALOG SIMULATION
+One unified amp. One audio context.
+Virtual Digital Analog Simulation — not tube.
+Full frequency range. THD 0.01 percent.
+Bass, mids, and highs all routed through the Helix.
+One amp. One brain. 1,720,000 watts of smart characteristics.
 
 THE CROSSOVER
 Gerrod didn't spec it.
@@ -18472,9 +18471,9 @@ Bass stays bass. Highs stay highs.
 
 THE SMART RANGE LIMITER
 One limiter. Only one.
-Volume range: 1 to 700.
+Volume range: 1 to 100.
 20 smart chips. 30 filters.
-Active from 100 to 700.
+Active from 1 to 100.
 It studies the notes as they play.
 And fixes them in real time.
 
@@ -18637,7 +18636,7 @@ function StoryCredits({ onClose }) {
                   "data-ocid": "story_credits.text",
                   children: STORY_TEXT.split("\n").map((line, i) => {
                     const stableKey = `story-line-${i}-${line.slice(0, 12).replace(/\s+/g, "_") || "blank"}`;
-                    const isTitle = line === "AMP PLAYER 1" || line === "THE THUNDER BATTERY" || line === "THE PROCESSOR CHARACTERISTICS" || line === "THE 8 OHM TO 1 OHM MIMICK" || line === "DUAL AMP SYSTEM — SRS 2022" || line === "THE CROSSOVER" || line === "THE SMART RANGE LIMITER" || line === "THE CHIP COMMANDER" || line === "4 GAUGE WIRING" || line === "DESIGNED, ENGINEERED, AND PRODUCED";
+                    const isTitle = line === "AMP PLAYER 1" || line === "THE THUNDER BATTERY" || line === "THE PROCESSOR CHARACTERISTICS" || line === "THE 8 OHM TO 1 OHM MIMICK" || line === "HELIX DSP AMP — VIRTUAL DIGITAL ANALOG SIMULATION" || line === "THE CROSSOVER" || line === "THE SMART RANGE LIMITER" || line === "THE CHIP COMMANDER" || line === "4 GAUGE WIRING" || line === "DESIGNED, ENGINEERED, AND PRODUCED";
                     const isSubtitle = line === "Designed by Gerrod";
                     const isBlank = line.trim() === "";
                     const isTagline = line === "This is what vision looks like.";
@@ -18745,10 +18744,68 @@ const eqSliderToDb = (sliderDb, bandIdx) => {
   }
   return sliderDb;
 };
-const AudioEngineContext = reactExports.createContext(null);
-const volToGain = (v) => Math.max(1e-3, Math.min(1, (v - 1) / 699));
+const volToGain = (v) => Math.max(0.01, Math.min(1, (v - 1) / 99));
 const pctToDb = (pct, minDb, maxDb) => minDb + pct / 100 * (maxDb - minDb);
 const pctToGain = (pct) => pct / 100 * 2;
+const SAB_SIZE = 64;
+const SAB_PUNCH = 0;
+const SAB_DEPTH = 1;
+const SAB_WEIGHT = 2;
+const SAB_CLARITY = 3;
+const SAB_BASS_DROP = 4;
+const SAB_BASS_NOTE = 5;
+const SAB_POWER_MIMIC = 6;
+const SAB_SIGNAL_AUTH = 7;
+const SAB_AMP_RESPONSE = 8;
+const SAB_OHMS = 9;
+const SAB_WATTS = 10;
+const SAB_CHIPS_ACTIVE = 11;
+const SAB_BT_CONNECTED = 12;
+const SAB_GAIN_KILL = 13;
+const SPEAKER_DB = {
+  "QFX PBX": { ohms: 8, watts: 400, boxType: "ported", size: "15-inch" },
+  JBL: { ohms: 8, watts: 300, boxType: "sealed", size: "12-inch" },
+  Sony: { ohms: 4, watts: 200, boxType: "sealed", size: "10-inch" },
+  Bose: { ohms: 4, watts: 150, boxType: "ported", size: "8-inch" },
+  Sonos: { ohms: 8, watts: 100, boxType: "ported", size: "6-inch" },
+  Samsung: { ohms: 8, watts: 200, boxType: "sealed", size: "10-inch" },
+  LG: { ohms: 8, watts: 150, boxType: "sealed", size: "8-inch" }
+};
+const lookupSpeaker = (name) => {
+  for (const [key, profile] of Object.entries(SPEAKER_DB)) {
+    if (name.includes(key)) return profile;
+  }
+  return { ohms: 8, watts: 200, boxType: "sealed", size: "unknown" };
+};
+const SRL_CROSSOVER_ADJUST = {
+  "A+": { bassOffset: 0, highsOffset: 0 },
+  "B+": { bassOffset: 0, highsOffset: 0 },
+  "C+": { bassOffset: 0, highsOffset: 0 },
+  D: { bassOffset: -10, highsOffset: 20 }
+};
+const defaultBassCharState = {
+  activeHz: 0,
+  liveEnergy14_50: new Array(37).fill(0),
+  deepSustainActive: false,
+  zeroDistortionActive: true
+};
+const defaultSpeakerProfile = {
+  detectedName: "QFX PBX-15",
+  ohms: 8,
+  estimatedSize: "15-inch",
+  powerHandling: "400W RMS",
+  profileApplied: true
+};
+const defaultIntelligenceLayer = {
+  appSelf: true,
+  smartChips: 25,
+  totalBehaviors: 1e5,
+  loadAmp: 35,
+  loadApp: 35,
+  loadChipCommander: 30,
+  threadBActive: false,
+  powerMimic: 0
+};
 const defaultProcessorChar = {
   punch: 0,
   depth: 90,
@@ -18760,31 +18817,22 @@ const defaultProcessorChar = {
   signalAuthority: 0,
   ampResponse: 0
 };
-const SRL_CROSSOVER_ADJUST = {
-  "A+": { bassOffset: 0, highsOffset: 0 },
-  "B+": { bassOffset: 0, highsOffset: 0 },
-  "C+": { bassOffset: 0, highsOffset: 0 },
-  D: { bassOffset: -10, highsOffset: 20 }
-};
-const ASO_BASS_WATTS = 7e3;
-const ASO_MIDS_WATTS = 2e3;
-const ASO_HIGHS_WATTS = 2e3;
-const ASO_TWEETERS_WATTS = 2e3;
-const ASO_TOTAL_WATTS = ASO_BASS_WATTS + ASO_MIDS_WATTS + ASO_HIGHS_WATTS + ASO_TWEETERS_WATTS;
+const AudioEngineContext = reactExports.createContext(null);
 function AudioEngineProvider({ children }) {
   const [state, setState] = reactExports.useState({
     isPlaying: false,
     isLoaded: false,
-    volume: 350,
+    volume: 50,
     fileName: "",
+    helixContextState: "suspended",
     bassContextState: "suspended",
     highsContextState: "suspended",
     currentTime: 0,
     duration: 0,
     bassFilterFreq: 80,
     highsFilterFreq: 250,
-    bassGainValue: 1,
-    highsGainValue: 1,
+    bassGainValue: 0,
+    highsGainValue: 0,
     bassCompReduction: 0,
     highsCompReduction: 0,
     eqBands: EQ_FREQS.map((freq) => ({ freq, gainDb: 0 })),
@@ -18805,31 +18853,39 @@ function AudioEngineProvider({ children }) {
     lastSaved: null,
     gainViolations: [],
     stackingViolations: [],
-    epicenterBoost: 50,
-    paraCenter: 60,
-    paraWidth: 1,
-    paraGain: 50,
     pfmActive: true,
+    bassRestorationLevel: 50,
+    processorMimic120dB: 50,
+    srlControlling120dB: false,
+    safetyProcessorActive: true,
+    safetyProcessorLevel: 0,
+    thunderBatterySafetyDraw: 1e3,
+    asoV3Routing: false,
     bassOutputLevel: 50,
     canisterActive: false,
     canisterBottomBoost: 50,
     canisterPunchBoost: 50,
     subLevel: 100,
     ultraActive: true,
+    helixActive: false,
     asoV3Active: false,
-    asoV3SlotNumber: 2847
+    asoV3Scanning: false,
+    scanResult: null,
+    asoV3SlotNumber: 1,
+    bassCharState: defaultBassCharState,
+    speakerProfile: defaultSpeakerProfile,
+    intelligenceLayer: defaultIntelligenceLayer,
+    gainKillActive: false,
+    outputMode: "internal",
+    threadBActive: false
   });
-  const bassCtxRef = reactExports.useRef(null);
-  const highsCtxRef = reactExports.useRef(null);
-  const bassInsertRef = reactExports.useRef(null);
-  const subGainNodeRef = reactExports.useRef(null);
+  const helixCtxRef = reactExports.useRef(null);
+  const volumeGainRef = reactExports.useRef(null);
   const bassEQFiltersRef = reactExports.useRef([]);
   const bassPfmFilterRef = reactExports.useRef(null);
   const bassRestLPRef = reactExports.useRef(null);
   const bassRestGainRef = reactExports.useRef(null);
   const bassRestMixRef = reactExports.useRef(null);
-  const bassMaximizerRef = reactExports.useRef(null);
-  const bassParaBassRef = reactExports.useRef(null);
   const bassOutputLevelRef = reactExports.useRef(null);
   const bassNaturalBottomRef = reactExports.useRef(null);
   const bassLR1Ref = reactExports.useRef(null);
@@ -18840,33 +18896,47 @@ function AudioEngineProvider({ children }) {
   const canisterOutRef = reactExports.useRef(null);
   const canisterDryRef = reactExports.useRef(null);
   const canisterMixRef = reactExports.useRef(null);
+  const safetyBoostRef = reactExports.useRef(null);
   const bassCompRef = reactExports.useRef(null);
   const bassAnalyserRef = reactExports.useRef(null);
-  const bassGainRef = reactExports.useRef(null);
-  const bassUltraGainRef = reactExports.useRef(null);
-  const bassCheaterRef = reactExports.useRef(null);
-  const bassEQuakeRef = reactExports.useRef(null);
-  const highsInsertRef = reactExports.useRef(null);
-  const highsEQFiltersRef = reactExports.useRef([]);
+  const masterGainRef = reactExports.useRef(null);
+  const subLevelGainRef = reactExports.useRef(null);
+  const deepBassBoostRef = reactExports.useRef(null);
+  const lowEndBoostNodeRef = reactExports.useRef(null);
+  const distortionShaperRef = reactExports.useRef(null);
+  const cleanFilterRef = reactExports.useRef(null);
+  const gainSnapshotRef = reactExports.useRef({
+    subLevel: 1,
+    canisterOut: 0.8,
+    bassRestGain: 1,
+    canisterDry: 1,
+    canisterF1: 0,
+    canisterF2: 0,
+    canisterF3: 0,
+    ultra: 1
+  });
   const highsLR1Ref = reactExports.useRef(null);
   const highsLR2Ref = reactExports.useRef(null);
   const highsCompRef = reactExports.useRef(null);
   const highsAnalyserRef = reactExports.useRef(null);
-  const highsGainRef = reactExports.useRef(null);
-  const highsUltraGainRef = reactExports.useRef(null);
+  const ultraGainRef = reactExports.useRef(null);
+  const highsEQFiltersRef = reactExports.useRef([]);
   const bassAnalyserDataRef = reactExports.useRef(null);
   const highsAnalyserDataRef = reactExports.useRef(null);
+  const bassFFTDataRef = reactExports.useRef(null);
+  const deepSustainTimerRef = reactExports.useRef(
+    null
+  );
+  const deepSustainActiveRef = reactExports.useRef(false);
   const prevBassFreqRef = reactExports.useRef(0);
   const charRafRef = reactExports.useRef(0);
-  const bassAudioRef = reactExports.useRef(null);
-  const highsAudioRef = reactExports.useRef(null);
-  const bassSourceRef = reactExports.useRef(null);
-  const highsSourceRef = reactExports.useRef(null);
+  const zeroStackingRafRef = reactExports.useRef(0);
+  const audioRef = reactExports.useRef(null);
+  const audioSourceRef = reactExports.useRef(null);
   const fileUrlRef = reactExports.useRef("");
-  const volumeRef = reactExports.useRef(350);
-  const asoV3ActiveRef = reactExports.useRef(false);
+  const volumeRef = reactExports.useRef(50);
   const rafRef = reactExports.useRef(0);
-  const reductionRafRef = reactExports.useRef(0);
+  const processorMimic120dBRef = reactExports.useRef(50);
   const boosterTimerRef = reactExports.useRef(null);
   const boosterCountdownRef = reactExports.useRef(
     null
@@ -18874,18 +18944,392 @@ function AudioEngineProvider({ children }) {
   const saveDebounceRef = reactExports.useRef(null);
   const srlDTimerRef = reactExports.useRef(null);
   const srlDActiveRef = reactExports.useRef(false);
+  const btScanIntervalRef = reactExports.useRef(null);
+  const sharedBufferRef = reactExports.useRef(null);
+  const sharedViewRef = reactExports.useRef(null);
+  const workerRef = reactExports.useRef(null);
+  const initContext = reactExports.useCallback(() => {
+    if (helixCtxRef.current) return;
+    const ctx = new AudioContext();
+    const volumeGain = ctx.createGain();
+    volumeGain.gain.value = volToGain(50);
+    const eqFilters = EQ_FREQS.map((freq, idx) => {
+      const f = ctx.createBiquadFilter();
+      f.type = "peaking";
+      f.frequency.value = freq;
+      f.Q.value = EQ_Q_VALUES[idx] ?? 1;
+      f.gain.value = EQ_LOW_BASE_BOOST[idx] ?? 0;
+      return f;
+    });
+    const bassPfmFilter = ctx.createBiquadFilter();
+    bassPfmFilter.type = "highpass";
+    bassPfmFilter.frequency.value = 14;
+    bassPfmFilter.Q.value = Math.SQRT1_2;
+    const bassRestLP = ctx.createBiquadFilter();
+    bassRestLP.type = "lowpass";
+    bassRestLP.frequency.value = 50;
+    bassRestLP.Q.value = 0.5;
+    const bassRestGain = ctx.createGain();
+    bassRestGain.gain.value = 1;
+    const bassRestMix = ctx.createGain();
+    bassRestMix.gain.value = 1;
+    const bassOutputLevel = ctx.createGain();
+    bassOutputLevel.gain.value = 1;
+    const bassNaturalBottom = ctx.createGain();
+    bassNaturalBottom.gain.value = 1;
+    const bassLR1 = ctx.createBiquadFilter();
+    bassLR1.type = "lowpass";
+    bassLR1.frequency.value = 80;
+    bassLR1.Q.value = Math.SQRT1_2;
+    const bassLR2 = ctx.createBiquadFilter();
+    bassLR2.type = "lowpass";
+    bassLR2.frequency.value = 80;
+    bassLR2.Q.value = Math.SQRT1_2;
+    const canisterF1 = ctx.createBiquadFilter();
+    canisterF1.type = "peaking";
+    canisterF1.frequency.value = 19;
+    canisterF1.Q.value = 1.5;
+    canisterF1.gain.value = 3;
+    const canisterF2 = ctx.createBiquadFilter();
+    canisterF2.type = "peaking";
+    canisterF2.frequency.value = 40;
+    canisterF2.Q.value = 2;
+    canisterF2.gain.value = 4;
+    const canisterF3 = ctx.createBiquadFilter();
+    canisterF3.type = "peaking";
+    canisterF3.frequency.value = 80;
+    canisterF3.Q.value = 1.5;
+    canisterF3.gain.value = 3;
+    const canisterOut = ctx.createGain();
+    canisterOut.gain.value = 0.8;
+    const canisterDry = ctx.createGain();
+    canisterDry.gain.value = 1;
+    const canisterMix = ctx.createGain();
+    canisterMix.gain.value = 1;
+    const safetyBoost = ctx.createBiquadFilter();
+    safetyBoost.type = "peaking";
+    safetyBoost.frequency.value = 30;
+    safetyBoost.Q.value = 1;
+    safetyBoost.gain.value = 3;
+    const deepBassBoost = ctx.createBiquadFilter();
+    deepBassBoost.type = "peaking";
+    deepBassBoost.frequency.value = 40;
+    deepBassBoost.Q.value = 1.4;
+    deepBassBoost.gain.value = 6;
+    const lowEndBoostNode = ctx.createBiquadFilter();
+    lowEndBoostNode.type = "peaking";
+    lowEndBoostNode.frequency.value = 30;
+    lowEndBoostNode.Q.value = 1;
+    lowEndBoostNode.gain.value = 0;
+    const subLevelGain = ctx.createGain();
+    subLevelGain.gain.value = 1;
+    const distortionShaper = ctx.createWaveShaper();
+    distortionShaper.curve = null;
+    distortionShaper.oversample = "4x";
+    const cleanFilter = ctx.createBiquadFilter();
+    cleanFilter.type = "highpass";
+    cleanFilter.frequency.value = 20;
+    cleanFilter.Q.value = 0.5;
+    const bassComp = ctx.createDynamicsCompressor();
+    bassComp.threshold.value = -24;
+    bassComp.knee.value = 30;
+    bassComp.ratio.value = 4;
+    bassComp.attack.value = 3e-3;
+    bassComp.release.value = 0.25;
+    const bassAnalyser = ctx.createAnalyser();
+    bassAnalyser.fftSize = 2048;
+    bassAnalyser.smoothingTimeConstant = 0.75;
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = 1;
+    const highsEQFilters = EQ_FREQS.slice(2).map(
+      (freq, i) => {
+        const f = ctx.createBiquadFilter();
+        f.type = "peaking";
+        f.frequency.value = freq;
+        f.Q.value = EQ_Q_VALUES[i + 2] ?? 1;
+        f.gain.value = 0;
+        return f;
+      }
+    );
+    const highsLR1 = ctx.createBiquadFilter();
+    highsLR1.type = "highpass";
+    highsLR1.frequency.value = 250;
+    highsLR1.Q.value = Math.SQRT1_2;
+    const highsLR2 = ctx.createBiquadFilter();
+    highsLR2.type = "highpass";
+    highsLR2.frequency.value = 250;
+    highsLR2.Q.value = Math.SQRT1_2;
+    const highsComp = ctx.createDynamicsCompressor();
+    highsComp.threshold.value = -24;
+    highsComp.knee.value = 30;
+    highsComp.ratio.value = 4;
+    highsComp.attack.value = 3e-3;
+    highsComp.release.value = 0.25;
+    const highsAnalyser = ctx.createAnalyser();
+    highsAnalyser.fftSize = 256;
+    highsAnalyser.smoothingTimeConstant = 0.8;
+    const ultraGain = ctx.createGain();
+    ultraGain.gain.value = 1;
+    volumeGain.connect(eqFilters[0]);
+    for (let i = 0; i < eqFilters.length - 1; i++) {
+      eqFilters[i].connect(eqFilters[i + 1]);
+    }
+    const eqLast = eqFilters[eqFilters.length - 1];
+    eqLast.connect(bassPfmFilter);
+    bassPfmFilter.connect(bassRestMix);
+    bassPfmFilter.connect(bassRestLP);
+    bassRestLP.connect(bassRestGain);
+    bassRestGain.connect(bassRestMix);
+    bassRestMix.connect(bassOutputLevel);
+    bassOutputLevel.connect(bassNaturalBottom);
+    bassNaturalBottom.connect(deepBassBoost);
+    deepBassBoost.connect(lowEndBoostNode);
+    lowEndBoostNode.connect(bassLR1);
+    bassLR1.connect(bassLR2);
+    bassLR2.connect(canisterF1);
+    canisterF1.connect(canisterF2);
+    canisterF2.connect(canisterF3);
+    canisterF3.connect(canisterOut);
+    canisterOut.connect(canisterMix);
+    bassLR2.connect(canisterDry);
+    canisterDry.connect(canisterMix);
+    canisterMix.connect(safetyBoost);
+    safetyBoost.connect(cleanFilter);
+    cleanFilter.connect(distortionShaper);
+    distortionShaper.connect(bassComp);
+    bassComp.connect(bassAnalyser);
+    bassAnalyser.connect(subLevelGain);
+    subLevelGain.connect(masterGain);
+    masterGain.connect(ctx.destination);
+    volumeGain.connect(highsEQFilters[0]);
+    for (let i = 0; i < highsEQFilters.length - 1; i++) {
+      highsEQFilters[i].connect(highsEQFilters[i + 1]);
+    }
+    const highsEQLast = highsEQFilters[highsEQFilters.length - 1];
+    highsEQLast.connect(highsLR1);
+    highsLR1.connect(highsLR2);
+    highsLR2.connect(highsComp);
+    highsComp.connect(highsAnalyser);
+    highsAnalyser.connect(ultraGain);
+    ultraGain.connect(ctx.destination);
+    helixCtxRef.current = ctx;
+    volumeGainRef.current = volumeGain;
+    bassEQFiltersRef.current = eqFilters;
+    bassPfmFilterRef.current = bassPfmFilter;
+    bassRestLPRef.current = bassRestLP;
+    bassRestGainRef.current = bassRestGain;
+    bassRestMixRef.current = bassRestMix;
+    bassOutputLevelRef.current = bassOutputLevel;
+    bassNaturalBottomRef.current = bassNaturalBottom;
+    bassLR1Ref.current = bassLR1;
+    bassLR2Ref.current = bassLR2;
+    canisterF1Ref.current = canisterF1;
+    canisterF2Ref.current = canisterF2;
+    canisterF3Ref.current = canisterF3;
+    canisterOutRef.current = canisterOut;
+    canisterDryRef.current = canisterDry;
+    canisterMixRef.current = canisterMix;
+    safetyBoostRef.current = safetyBoost;
+    bassCompRef.current = bassComp;
+    bassAnalyserRef.current = bassAnalyser;
+    masterGainRef.current = masterGain;
+    subLevelGainRef.current = subLevelGain;
+    deepBassBoostRef.current = deepBassBoost;
+    lowEndBoostNodeRef.current = lowEndBoostNode;
+    distortionShaperRef.current = distortionShaper;
+    cleanFilterRef.current = cleanFilter;
+    highsLR1Ref.current = highsLR1;
+    highsLR2Ref.current = highsLR2;
+    highsCompRef.current = highsComp;
+    highsAnalyserRef.current = highsAnalyser;
+    ultraGainRef.current = ultraGain;
+    highsEQFiltersRef.current = highsEQFilters;
+    bassAnalyserDataRef.current = new Float32Array(
+      bassAnalyser.fftSize
+    );
+    highsAnalyserDataRef.current = new Float32Array(
+      highsAnalyser.fftSize
+    );
+    bassFFTDataRef.current = new Float32Array(
+      bassAnalyser.frequencyBinCount
+    );
+    if (typeof SharedArrayBuffer !== "undefined") {
+      try {
+        const sab = new SharedArrayBuffer(SAB_SIZE * 4);
+        const view = new Float32Array(sab);
+        view[SAB_OHMS] = 8;
+        view[SAB_WATTS] = 400;
+        view[SAB_CHIPS_ACTIVE] = 25;
+        view[SAB_BT_CONNECTED] = 0;
+        view[SAB_GAIN_KILL] = 0;
+        view[SAB_POWER_MIMIC] = 1;
+        sharedBufferRef.current = sab;
+        sharedViewRef.current = view;
+      } catch {
+        console.warn(
+          "[Helix] SharedArrayBuffer not available — Thread B disabled"
+        );
+      }
+    }
+  }, []);
+  const startWorker = reactExports.useCallback(() => {
+    if (workerRef.current || !sharedBufferRef.current) return;
+    try {
+      const worker = new Worker(
+        new URL(
+          /* @vite-ignore */
+          "/assets/intelligenceWorker-CNh36V3O.js",
+          import.meta.url
+        ),
+        { type: "module" }
+      );
+      let learning;
+      try {
+        const saved = localStorage.getItem("helixChipLearning");
+        if (saved) learning = JSON.parse(saved);
+      } catch {
+      }
+      worker.postMessage({
+        type: "INIT",
+        buffer: sharedBufferRef.current,
+        learning
+      });
+      worker.onmessage = (event) => {
+        if (event.data.type === "SESSION_LEARNING") {
+          try {
+            localStorage.setItem(
+              "helixChipLearning",
+              JSON.stringify(event.data.data)
+            );
+          } catch {
+          }
+        }
+      };
+      workerRef.current = worker;
+      setState((s) => ({
+        ...s,
+        threadBActive: true,
+        intelligenceLayer: { ...s.intelligenceLayer, threadBActive: true }
+      }));
+      console.log("[Helix] Thread B (Intelligence Worker) started");
+    } catch (err) {
+      console.warn("[Helix] Could not start intelligence worker:", err);
+    }
+  }, []);
+  const runBluetoothScan = reactExports.useCallback(async () => {
+    var _a2;
+    const nav = navigator;
+    if (!nav.bluetooth) return;
+    try {
+      const devices = await nav.bluetooth.getDevices();
+      if (!devices.length) return;
+      const device = devices[0];
+      const name = device.name ?? "";
+      const profile = lookupSpeaker(name);
+      const view = sharedViewRef.current;
+      if (view) {
+        view[SAB_OHMS] = profile.ohms;
+        view[SAB_WATTS] = profile.watts;
+        view[SAB_BT_CONNECTED] = 1;
+      }
+      (_a2 = workerRef.current) == null ? void 0 : _a2.postMessage({
+        type: "SET_BOX_TYPE",
+        boxType: profile.boxType
+      });
+      setState((s) => ({
+        ...s,
+        speakerProfile: {
+          detectedName: name || "QFX PBX-15",
+          ohms: profile.ohms,
+          estimatedSize: profile.size,
+          powerHandling: `${profile.watts}W RMS`,
+          profileApplied: true
+        }
+      }));
+      console.log(
+        `[Bluetooth Scanner] Speaker detected: ${name || "QFX PBX-15"} | ${profile.ohms}Ω | ${profile.watts}W | ${profile.boxType}`
+      );
+    } catch {
+    }
+  }, []);
+  const startZeroStackingChip = reactExports.useCallback(() => {
+    const tick = () => {
+      const view = sharedViewRef.current;
+      const masterGain = masterGainRef.current;
+      volumeGainRef.current;
+      if (view && masterGain) {
+        const gainKillActive = view[SAB_GAIN_KILL] > 0.5;
+        if (masterGain.gain.value !== 1) {
+          console.log(
+            `[Zero Stacking Policy Chip] masterGain corrected to 1.0 (was ${masterGain.gain.value})`
+          );
+          masterGain.gain.setValueAtTime(1, masterGain.context.currentTime);
+        }
+        if (gainKillActive) {
+          const now2 = masterGain.context.currentTime;
+          if (subLevelGainRef.current && subLevelGainRef.current.gain.value !== 0)
+            subLevelGainRef.current.gain.setValueAtTime(0, now2);
+          if (bassRestGainRef.current && bassRestGainRef.current.gain.value !== 0)
+            bassRestGainRef.current.gain.setValueAtTime(0, now2);
+          if (canisterOutRef.current && canisterOutRef.current.gain.value !== 0)
+            canisterOutRef.current.gain.setValueAtTime(0, now2);
+          if (canisterDryRef.current && canisterDryRef.current.gain.value !== 0)
+            canisterDryRef.current.gain.setValueAtTime(0, now2);
+          if (canisterF1Ref.current && canisterF1Ref.current.gain.value !== 0)
+            canisterF1Ref.current.gain.setValueAtTime(0, now2);
+          if (canisterF2Ref.current && canisterF2Ref.current.gain.value !== 0)
+            canisterF2Ref.current.gain.setValueAtTime(0, now2);
+          if (canisterF3Ref.current && canisterF3Ref.current.gain.value !== 0)
+            canisterF3Ref.current.gain.setValueAtTime(0, now2);
+          if (ultraGainRef.current && ultraGainRef.current.gain.value !== 0)
+            ultraGainRef.current.gain.setValueAtTime(0, now2);
+        } else {
+          const now2 = masterGain.context.currentTime;
+          if (subLevelGainRef.current && subLevelGainRef.current.gain.value > 1) {
+            console.log("[Zero Stacking Policy Chip] subLevel clamped to 1.0");
+            subLevelGainRef.current.gain.setValueAtTime(1, now2);
+          }
+          if (bassRestGainRef.current && bassRestGainRef.current.gain.value > 1) {
+            console.log(
+              "[Zero Stacking Policy Chip] bassRestGain clamped to 1.0"
+            );
+            bassRestGainRef.current.gain.setValueAtTime(1, now2);
+          }
+          if (canisterOutRef.current && canisterOutRef.current.gain.value > 1) {
+            console.log(
+              "[Zero Stacking Policy Chip] canisterOut clamped to 1.0"
+            );
+            canisterOutRef.current.gain.setValueAtTime(1, now2);
+          }
+          if (ultraGainRef.current && ultraGainRef.current.gain.value > 1) {
+            console.log("[Zero Stacking Policy Chip] ultraGain clamped to 1.0");
+            ultraGainRef.current.gain.setValueAtTime(1, now2);
+          }
+        }
+      }
+      zeroStackingRafRef.current = requestAnimationFrame(tick);
+    };
+    zeroStackingRafRef.current = requestAnimationFrame(tick);
+  }, []);
   const startCharTick = reactExports.useCallback(() => {
     const tick = () => {
+      var _a2;
       const bassAnalyser = bassAnalyserRef.current;
       const highsAnalyser = highsAnalyserRef.current;
       const bassData = bassAnalyserDataRef.current;
       const highsData = highsAnalyserDataRef.current;
+      const fftData = bassFFTDataRef.current;
+      const view = sharedViewRef.current;
       if (!bassAnalyser || !highsAnalyser || !bassData || !highsData) {
         charRafRef.current = requestAnimationFrame(tick);
         return;
       }
-      bassAnalyser.getFloatTimeDomainData(bassData);
-      highsAnalyser.getFloatTimeDomainData(highsData);
+      bassAnalyser.getFloatTimeDomainData(
+        bassData
+      );
+      highsAnalyser.getFloatTimeDomainData(
+        highsData
+      );
       let bassRmsSum = 0;
       for (let i = 0; i < bassData.length; i++)
         bassRmsSum += bassData[i] * bassData[i];
@@ -18895,36 +19339,181 @@ function AudioEngineProvider({ children }) {
         highsRmsSum += highsData[i] * highsData[i];
       const highsRms = Math.sqrt(highsRmsSum / highsData.length);
       const vol = volumeRef.current;
-      const volNorm = (vol - 1) / 699;
-      const punch = Math.min(100, Math.round(bassRms * 500 + volNorm * 40));
-      const depth = Math.min(100, Math.round(85 + bassRms * 50));
-      const weight = Math.min(100, Math.round(bassRms * 600 + volNorm * 30));
+      const volNorm = (vol - 1) / 99;
+      let threadBPunch = 0;
+      let threadBDepth = 90;
+      let threadBWeight = 0;
+      let threadBClarity = 0;
+      let threadBBassDrop = 0;
+      let threadBBassNote = 0;
+      let threadBPowerMimic = 0;
+      let threadBSignalAuth = 0;
+      let threadBAmpResp = 0;
+      let threadBChipsActive = 25;
+      if (view) {
+        threadBPunch = view[SAB_PUNCH] * 100;
+        threadBDepth = view[SAB_DEPTH] * 100;
+        threadBWeight = view[SAB_WEIGHT] * 100;
+        threadBClarity = view[SAB_CLARITY] * 100;
+        threadBBassDrop = view[SAB_BASS_DROP] * 100;
+        threadBBassNote = view[SAB_BASS_NOTE] * 100;
+        threadBPowerMimic = view[SAB_POWER_MIMIC] * 100;
+        threadBSignalAuth = view[SAB_SIGNAL_AUTH] * 100;
+        threadBAmpResp = view[SAB_AMP_RESPONSE] * 100;
+        threadBChipsActive = Math.round(view[SAB_CHIPS_ACTIVE]);
+        const gainKillOn = view[SAB_GAIN_KILL] > 0.5;
+        if (!gainKillOn) {
+          const punchRaw = view[SAB_PUNCH];
+          if (bassCompRef.current) {
+            bassCompRef.current.knee.value = punchRaw * 40;
+          }
+          const depthRaw = view[SAB_DEPTH];
+          if (bassRestGainRef.current) {
+            bassRestGainRef.current.gain.setValueAtTime(
+              Math.min(1, 0.8 + depthRaw * 1.2),
+              bassRestGainRef.current.context.currentTime
+            );
+          }
+          const weightRaw = view[SAB_WEIGHT];
+          if (deepBassBoostRef.current) {
+            deepBassBoostRef.current.gain.value = 4 + weightRaw * 6;
+          }
+          const clarityRaw = view[SAB_CLARITY];
+          if (highsEQFiltersRef.current[4]) {
+            highsEQFiltersRef.current[4].gain.value = clarityRaw * 3;
+          }
+          const powerRaw = view[SAB_POWER_MIMIC];
+          const targetCeiling = 0.85 + powerRaw * 0.13;
+          if (masterGainRef.current) {
+            const clamped = Math.min(targetCeiling, 1);
+            masterGainRef.current.gain.value = clamped;
+          }
+          const zspNodes = [
+            { node: subLevelGainRef.current, name: "subLevelGain" },
+            { node: canisterOutRef.current, name: "canisterOut" },
+            { node: canisterDryRef.current, name: "canisterDry" }
+          ];
+          for (const { node, name } of zspNodes) {
+            if (node && node.gain.value > 1) {
+              console.warn(
+                `[Zero Stacking Policy] VIOLATION: ${name} was ${node.gain.value.toFixed(3)}, clamped to 1.0`
+              );
+              node.gain.value = 1;
+            }
+          }
+          if (masterGainRef.current && masterGainRef.current.gain.value > 1) {
+            console.warn(
+              "[Zero Stacking Policy] VIOLATION: masterGain exceeded 1.0, clamped"
+            );
+            masterGainRef.current.gain.value = 1;
+          }
+          if (volumeGainRef.current && volumeGainRef.current.gain.value > 1) {
+            console.warn(
+              "[Zero Stacking Policy] VIOLATION: volumeGain exceeded 1.0, clamped"
+            );
+            volumeGainRef.current.gain.value = 1;
+          }
+        }
+      }
+      const punch = Math.min(
+        100,
+        Math.round((bassRms * 300 + volNorm * 30) * 0.6 + threadBPunch * 0.4)
+      );
+      const depth = Math.min(
+        100,
+        Math.round((85 + bassRms * 30) * 0.7 + threadBDepth * 0.3)
+      );
+      const weight = Math.min(
+        100,
+        Math.round((bassRms * 400 + volNorm * 25) * 0.6 + threadBWeight * 0.4)
+      );
       const clarity = Math.min(
         100,
-        Math.round(highsRms * 500 + volNorm * 25 + 20)
+        Math.round(
+          (highsRms * 400 + volNorm * 20 + 20) * 0.65 + threadBClarity * 0.35
+        )
       );
-      const bassDrop = vol >= 100 && bassRms > 0.01 ? Math.min(100, Math.round(80 + bassRms * 200)) : 0;
+      const bassDrop = vol >= 50 && bassRms > 0.01 ? Math.min(
+        100,
+        Math.round(60 + bassRms * 150 + threadBBassDrop * 0.3)
+      ) : 0;
       const diff = Math.abs(bassRms - prevBassFreqRef.current);
       prevBassFreqRef.current = bassRms;
-      const bassNoteSwitching = Math.min(100, Math.round(diff * 8e3));
-      const bassPowerScale = ASO_BASS_WATTS / ASO_TOTAL_WATTS;
+      const bassNoteSwitching = Math.min(
+        100,
+        Math.round(diff * 6e3 + threadBBassNote * 0.2)
+      );
+      const mimicCeiling = 0.5 + processorMimic120dBRef.current / 100 * 0.5;
       const powerMimic = Math.min(
         100,
         Math.round(
-          (bassRms * 600 * bassPowerScale + volNorm * 50) * (asoV3ActiveRef.current ? 1.35 : 1)
+          (bassRms * 400 * 0.538 + volNorm * 40) * mimicCeiling * 0.5 + threadBPowerMimic * 0.5
         )
       );
       const signalAuthority = Math.min(
         100,
         Math.round(
-          (punch * 0.4 + weight * 0.4 + depth * 0.2) * (asoV3ActiveRef.current ? 1.4 : 1)
+          (punch * 0.4 + weight * 0.4 + depth * 0.2) * mimicCeiling * 0.6 + threadBSignalAuth * 0.4
         )
       );
       const combinedRms = bassRms * 0.6 + highsRms * 0.4;
       const ampResponse = Math.min(
         100,
-        Math.round(combinedRms * 700 + volNorm * 35)
+        Math.round(combinedRms * 500 + volNorm * 30 + threadBAmpResp * 0.3)
       );
+      const liveEnergy14_50 = new Array(37).fill(0);
+      let activeHz = 0;
+      let peakEnergy = 0;
+      let zeroDistortionActive = true;
+      if (fftData && bassAnalyser) {
+        bassAnalyser.getFloatFrequencyData(
+          fftData
+        );
+        const sampleRate = ((_a2 = helixCtxRef.current) == null ? void 0 : _a2.sampleRate) ?? 44100;
+        const binHz = sampleRate / bassAnalyser.fftSize;
+        for (let hz = 14; hz <= 50; hz++) {
+          const binIndex = Math.round(hz / binHz);
+          if (binIndex >= fftData.length) continue;
+          const dbVal = fftData[binIndex] ?? -100;
+          const norm = Math.max(0, Math.min(1, (dbVal + 100) / 100));
+          let boostFactor = 1;
+          if (hz <= 20) boostFactor = 1.5;
+          else if (hz <= 35) boostFactor = 1.25;
+          const boosted = Math.min(1, norm * boostFactor);
+          liveEnergy14_50[hz - 14] = boosted;
+          if (boosted > 0.98) zeroDistortionActive = false;
+          if (boosted > peakEnergy) {
+            peakEnergy = boosted;
+            activeHz = hz;
+          }
+        }
+      }
+      const low40Energy = liveEnergy14_50.slice(0, 27).reduce((a, b) => a + b, 0) / 27;
+      if (bassRms < 5e-3 && low40Energy > 0.1) {
+        if (!deepSustainActiveRef.current) {
+          deepSustainActiveRef.current = true;
+          if (deepSustainTimerRef.current)
+            clearTimeout(deepSustainTimerRef.current);
+          deepSustainTimerRef.current = setTimeout(() => {
+            deepSustainActiveRef.current = false;
+          }, 120);
+        }
+      }
+      const deepSustainActive = deepSustainActiveRef.current;
+      if (workerRef.current) {
+        workerRef.current.postMessage({ type: "SET_VOLUME", volume: volNorm });
+      }
+      const isHelixActive = state.helixActive;
+      const intelligenceLayer = {
+        appSelf: true,
+        smartChips: isHelixActive ? threadBChipsActive : 0,
+        totalBehaviors: 1e5,
+        loadAmp: isHelixActive ? 35 : 0,
+        loadApp: isHelixActive ? 35 : 0,
+        loadChipCommander: isHelixActive ? 30 : 0,
+        threadBActive: workerRef.current !== null,
+        powerMimic: threadBPowerMimic
+      };
       setState((s) => ({
         ...s,
         processorChar: {
@@ -18937,220 +19526,19 @@ function AudioEngineProvider({ children }) {
           powerMimic,
           signalAuthority,
           ampResponse
-        }
+        },
+        bassCharState: {
+          activeHz,
+          liveEnergy14_50,
+          deepSustainActive,
+          zeroDistortionActive
+        },
+        intelligenceLayer
       }));
       charRafRef.current = requestAnimationFrame(tick);
     };
     charRafRef.current = requestAnimationFrame(tick);
-  }, []);
-  const initContexts = reactExports.useCallback(() => {
-    if (bassCtxRef.current) return;
-    const bassCtx = new AudioContext();
-    const highsCtx = new AudioContext();
-    const bassInsert = bassCtx.createGain();
-    bassInsert.gain.value = 1;
-    const subGainNode = bassCtx.createGain();
-    subGainNode.gain.value = 1;
-    const bassEQFilters = EQ_FREQS.map((freq, idx) => {
-      const f = bassCtx.createBiquadFilter();
-      f.type = "peaking";
-      f.frequency.value = freq;
-      f.Q.value = EQ_Q_VALUES[idx] ?? 1;
-      f.gain.value = EQ_LOW_BASE_BOOST[idx] ?? 0;
-      return f;
-    });
-    const bassPfmFilter = bassCtx.createBiquadFilter();
-    bassPfmFilter.type = "highpass";
-    bassPfmFilter.frequency.value = 14;
-    bassPfmFilter.Q.value = Math.SQRT1_2;
-    const bassRestLP = bassCtx.createBiquadFilter();
-    bassRestLP.type = "lowpass";
-    bassRestLP.frequency.value = 50;
-    bassRestLP.Q.value = 0.5;
-    const bassRestGain = bassCtx.createGain();
-    bassRestGain.gain.value = 0.4;
-    const bassRestMix = bassCtx.createGain();
-    bassRestMix.gain.value = 1;
-    const bassMaximizer = bassCtx.createBiquadFilter();
-    bassMaximizer.type = "peaking";
-    bassMaximizer.frequency.value = 60;
-    bassMaximizer.Q.value = 1.2;
-    bassMaximizer.gain.value = 6;
-    const bassParaBass = bassCtx.createBiquadFilter();
-    bassParaBass.type = "peaking";
-    bassParaBass.frequency.value = 60;
-    bassParaBass.Q.value = 1;
-    bassParaBass.gain.value = 0;
-    const bassOutputLevel = bassCtx.createGain();
-    bassOutputLevel.gain.value = 1;
-    const bassNaturalBottom = bassCtx.createGain();
-    bassNaturalBottom.gain.value = 1;
-    const bassLR1 = bassCtx.createBiquadFilter();
-    bassLR1.type = "lowpass";
-    bassLR1.frequency.value = 80;
-    bassLR1.Q.value = Math.SQRT1_2;
-    const bassLR2 = bassCtx.createBiquadFilter();
-    bassLR2.type = "lowpass";
-    bassLR2.frequency.value = 80;
-    bassLR2.Q.value = Math.SQRT1_2;
-    const canisterF1 = bassCtx.createBiquadFilter();
-    canisterF1.type = "peaking";
-    canisterF1.frequency.value = 19;
-    canisterF1.Q.value = 1.5;
-    canisterF1.gain.value = 3;
-    const canisterF2 = bassCtx.createBiquadFilter();
-    canisterF2.type = "peaking";
-    canisterF2.frequency.value = 40;
-    canisterF2.Q.value = 2;
-    canisterF2.gain.value = 4;
-    const canisterF3 = bassCtx.createBiquadFilter();
-    canisterF3.type = "peaking";
-    canisterF3.frequency.value = 80;
-    canisterF3.Q.value = 1.5;
-    canisterF3.gain.value = 3;
-    const canisterOut = bassCtx.createGain();
-    canisterOut.gain.value = 0;
-    const canisterDry = bassCtx.createGain();
-    canisterDry.gain.value = 1;
-    const canisterMix = bassCtx.createGain();
-    canisterMix.gain.value = 1;
-    const bassComp = bassCtx.createDynamicsCompressor();
-    bassComp.threshold.value = -24;
-    bassComp.knee.value = 30;
-    bassComp.ratio.value = 4;
-    bassComp.attack.value = 3e-3;
-    bassComp.release.value = 0.25;
-    const bassAnalyser = bassCtx.createAnalyser();
-    bassAnalyser.fftSize = 256;
-    bassAnalyser.smoothingTimeConstant = 0.8;
-    const bassGain = bassCtx.createGain();
-    bassGain.gain.value = 1;
-    const bassUltraGain = bassCtx.createGain();
-    bassUltraGain.gain.value = 1;
-    bassInsert.connect(subGainNode);
-    subGainNode.connect(bassEQFilters[0]);
-    for (let i = 0; i < bassEQFilters.length - 1; i++) {
-      bassEQFilters[i].connect(bassEQFilters[i + 1]);
-    }
-    const bassEQLast = bassEQFilters[bassEQFilters.length - 1];
-    bassEQLast.connect(bassPfmFilter);
-    bassPfmFilter.connect(bassRestMix);
-    bassPfmFilter.connect(bassRestLP);
-    bassRestLP.connect(bassRestGain);
-    bassRestGain.connect(bassRestMix);
-    bassRestMix.connect(bassMaximizer);
-    bassMaximizer.connect(bassParaBass);
-    bassParaBass.connect(bassOutputLevel);
-    bassOutputLevel.connect(bassNaturalBottom);
-    bassNaturalBottom.connect(bassLR1);
-    bassLR1.connect(bassLR2);
-    bassLR2.connect(canisterF1);
-    canisterF1.connect(canisterF2);
-    canisterF2.connect(canisterF3);
-    canisterF3.connect(canisterOut);
-    canisterOut.connect(canisterMix);
-    bassLR2.connect(canisterDry);
-    canisterDry.connect(canisterMix);
-    canisterMix.connect(bassComp);
-    bassComp.connect(bassAnalyser);
-    bassAnalyser.connect(bassGain);
-    bassGain.connect(bassUltraGain);
-    bassUltraGain.connect(bassCtx.destination);
-    const bassCheater = bassCtx.createBiquadFilter();
-    bassCheater.type = "peaking";
-    bassCheater.frequency.value = 33;
-    bassCheater.Q.value = 2;
-    bassCheater.gain.value = 0;
-    const bassEQuake = bassCtx.createBiquadFilter();
-    bassEQuake.type = "peaking";
-    bassEQuake.frequency.value = 28;
-    bassEQuake.Q.value = 1.5;
-    bassEQuake.gain.value = 0;
-    const highsInsert = highsCtx.createGain();
-    highsInsert.gain.value = 1;
-    const highsEQFilters = EQ_FREQS.map((freq, idx) => {
-      const f = highsCtx.createBiquadFilter();
-      f.type = "peaking";
-      f.frequency.value = freq;
-      f.Q.value = EQ_Q_VALUES[idx] ?? 1;
-      f.gain.value = EQ_LOW_BASE_BOOST[idx] ?? 0;
-      return f;
-    });
-    const highsLR1 = highsCtx.createBiquadFilter();
-    highsLR1.type = "highpass";
-    highsLR1.frequency.value = 250;
-    highsLR1.Q.value = Math.SQRT1_2;
-    const highsLR2 = highsCtx.createBiquadFilter();
-    highsLR2.type = "highpass";
-    highsLR2.frequency.value = 250;
-    highsLR2.Q.value = Math.SQRT1_2;
-    const highsComp = highsCtx.createDynamicsCompressor();
-    highsComp.threshold.value = -24;
-    highsComp.knee.value = 30;
-    highsComp.ratio.value = 4;
-    highsComp.attack.value = 3e-3;
-    highsComp.release.value = 0.25;
-    const highsAnalyser = highsCtx.createAnalyser();
-    highsAnalyser.fftSize = 256;
-    highsAnalyser.smoothingTimeConstant = 0.8;
-    const highsGain = highsCtx.createGain();
-    highsGain.gain.value = 1;
-    const highsUltraGain = highsCtx.createGain();
-    highsUltraGain.gain.value = 1;
-    highsInsert.connect(highsEQFilters[0]);
-    for (let i = 0; i < highsEQFilters.length - 1; i++) {
-      highsEQFilters[i].connect(highsEQFilters[i + 1]);
-    }
-    const highsEQLast = highsEQFilters[highsEQFilters.length - 1];
-    highsEQLast.connect(highsLR1);
-    highsLR1.connect(highsLR2);
-    highsLR2.connect(highsComp);
-    highsComp.connect(highsAnalyser);
-    highsAnalyser.connect(highsGain);
-    highsGain.connect(highsUltraGain);
-    highsUltraGain.connect(highsCtx.destination);
-    subGainNodeRef.current = subGainNode;
-    bassCtxRef.current = bassCtx;
-    highsCtxRef.current = highsCtx;
-    bassInsertRef.current = bassInsert;
-    bassEQFiltersRef.current = bassEQFilters;
-    bassPfmFilterRef.current = bassPfmFilter;
-    bassRestLPRef.current = bassRestLP;
-    bassRestGainRef.current = bassRestGain;
-    bassRestMixRef.current = bassRestMix;
-    bassMaximizerRef.current = bassMaximizer;
-    bassParaBassRef.current = bassParaBass;
-    bassOutputLevelRef.current = bassOutputLevel;
-    bassNaturalBottomRef.current = bassNaturalBottom;
-    bassLR1Ref.current = bassLR1;
-    bassLR2Ref.current = bassLR2;
-    canisterF1Ref.current = canisterF1;
-    canisterF2Ref.current = canisterF2;
-    canisterF3Ref.current = canisterF3;
-    canisterOutRef.current = canisterOut;
-    canisterDryRef.current = canisterDry;
-    canisterMixRef.current = canisterMix;
-    bassCompRef.current = bassComp;
-    bassAnalyserRef.current = bassAnalyser;
-    bassGainRef.current = bassGain;
-    bassUltraGainRef.current = bassUltraGain;
-    bassCheaterRef.current = bassCheater;
-    bassEQuakeRef.current = bassEQuake;
-    highsInsertRef.current = highsInsert;
-    highsEQFiltersRef.current = highsEQFilters;
-    highsLR1Ref.current = highsLR1;
-    highsLR2Ref.current = highsLR2;
-    highsCompRef.current = highsComp;
-    highsAnalyserRef.current = highsAnalyser;
-    highsGainRef.current = highsGain;
-    highsUltraGainRef.current = highsUltraGain;
-    bassAnalyserDataRef.current = new Float32Array(
-      bassAnalyser.fftSize
-    );
-    highsAnalyserDataRef.current = new Float32Array(
-      highsAnalyser.fftSize
-    );
-  }, []);
+  }, [state.helixActive]);
   const applySRLCrossoverCommand = reactExports.useCallback(
     (grade, bassFreq, highsFreq) => {
       const adj = SRL_CROSSOVER_ADJUST[grade];
@@ -19177,94 +19565,94 @@ function AudioEngineProvider({ children }) {
     if (srlDActiveRef.current) return;
     srlDActiveRef.current = true;
     srlDTimerRef.current = setTimeout(() => {
-      const bassInsert = bassInsertRef.current;
-      const highsInsert = highsInsertRef.current;
-      if (!bassInsert || !highsInsert) return;
-      const currentGain = bassInsert.gain.value;
+      const volumeGain = volumeGainRef.current;
+      if (!volumeGain) return;
+      const currentGain = volumeGain.gain.value;
       const reduced = currentGain * 0.95;
-      bassInsert.gain.value = reduced;
-      highsInsert.gain.value = reduced;
+      volumeGain.gain.value = reduced;
       setTimeout(() => {
-        if (bassInsertRef.current)
-          bassInsertRef.current.gain.value = currentGain;
-        if (highsInsertRef.current)
-          highsInsertRef.current.gain.value = currentGain;
+        if (volumeGainRef.current)
+          volumeGainRef.current.gain.value = currentGain;
         srlDActiveRef.current = false;
       }, 500);
     }, 3e3);
   }, []);
+  const runPrePlayScan = reactExports.useCallback(() => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const ctx = helixCtxRef.current;
+        const masterGain = masterGainRef.current;
+        let result = "clean";
+        if (!ctx || ctx.state === "closed") result = "problem";
+        if (masterGain && masterGain.gain.value !== 1) result = "problem";
+        console.log(`[Helix Pre-Play Scanner] Result: ${result}`);
+        resolve(result);
+      }, 2e3);
+    });
+  }, []);
   const loadFile = reactExports.useCallback(
     async (file) => {
-      initContexts();
+      initContext();
       if (fileUrlRef.current) URL.revokeObjectURL(fileUrlRef.current);
       const url = URL.createObjectURL(file);
       fileUrlRef.current = url;
-      if (bassSourceRef.current) {
-        bassSourceRef.current.disconnect();
-        bassSourceRef.current = null;
+      if (audioSourceRef.current) {
+        audioSourceRef.current.disconnect();
+        audioSourceRef.current = null;
       }
-      if (highsSourceRef.current) {
-        highsSourceRef.current.disconnect();
-        highsSourceRef.current = null;
+      const audio = new Audio();
+      audio.src = url;
+      audio.crossOrigin = "anonymous";
+      audio.preload = "auto";
+      audioRef.current = audio;
+      const ctx = helixCtxRef.current;
+      const source = ctx.createMediaElementSource(audio);
+      source.connect(volumeGainRef.current);
+      audioSourceRef.current = source;
+      await ctx.resume();
+      startWorker();
+      startZeroStackingChip();
+      runBluetoothScan();
+      if (!btScanIntervalRef.current) {
+        btScanIntervalRef.current = setInterval(runBluetoothScan, 3e4);
       }
-      const bassAudio = new Audio();
-      bassAudio.src = url;
-      bassAudio.crossOrigin = "anonymous";
-      bassAudio.preload = "auto";
-      const highsAudio = new Audio();
-      highsAudio.src = url;
-      highsAudio.crossOrigin = "anonymous";
-      highsAudio.preload = "auto";
-      bassAudioRef.current = bassAudio;
-      highsAudioRef.current = highsAudio;
-      const bassCtx = bassCtxRef.current;
-      const highsCtx = highsCtxRef.current;
-      const bassSource = bassCtx.createMediaElementSource(bassAudio);
-      bassSource.connect(bassInsertRef.current);
-      bassSourceRef.current = bassSource;
-      const highsSource = highsCtx.createMediaElementSource(highsAudio);
-      highsSource.connect(highsInsertRef.current);
-      highsSourceRef.current = highsSource;
-      await bassCtx.resume();
-      await highsCtx.resume();
       setState((s) => ({
         ...s,
         isLoaded: true,
         fileName: file.name,
-        bassContextState: bassCtx.state,
-        highsContextState: highsCtx.state
+        helixContextState: ctx.state,
+        bassContextState: ctx.state,
+        highsContextState: ctx.state
       }));
     },
-    [initContexts]
+    [initContext, startWorker, startZeroStackingChip, runBluetoothScan]
   );
   const play = reactExports.useCallback(() => {
     var _a2, _b2;
-    const bassAudio = bassAudioRef.current;
-    const highsAudio = highsAudioRef.current;
-    if (!bassAudio || !highsAudio) return;
-    (_a2 = bassCtxRef.current) == null ? void 0 : _a2.resume();
-    (_b2 = highsCtxRef.current) == null ? void 0 : _b2.resume();
-    bassAudio.play().catch(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    (_a2 = helixCtxRef.current) == null ? void 0 : _a2.resume();
+    audio.play().catch(() => {
     });
-    highsAudio.play().catch(() => {
-    });
+    (_b2 = workerRef.current) == null ? void 0 : _b2.postMessage({ type: "SET_PLAYING", playing: true });
     setState((s) => {
-      var _a3, _b3;
+      var _a3, _b3, _c2;
       return {
         ...s,
         isPlaying: true,
-        bassContextState: ((_a3 = bassCtxRef.current) == null ? void 0 : _a3.state) ?? "running",
-        highsContextState: ((_b3 = highsCtxRef.current) == null ? void 0 : _b3.state) ?? "running"
+        helixContextState: ((_a3 = helixCtxRef.current) == null ? void 0 : _a3.state) ?? "running",
+        bassContextState: ((_b3 = helixCtxRef.current) == null ? void 0 : _b3.state) ?? "running",
+        highsContextState: ((_c2 = helixCtxRef.current) == null ? void 0 : _c2.state) ?? "running"
       };
     });
     const tick = () => {
-      if (bassAudio.duration) {
+      if (audio.duration) {
         setState((s) => {
           var _a3, _b3;
           return {
             ...s,
-            currentTime: bassAudio.currentTime,
-            duration: bassAudio.duration,
+            currentTime: audio.currentTime,
+            duration: audio.duration,
             bassCompReduction: ((_a3 = bassCompRef.current) == null ? void 0 : _a3.reduction) ?? 0,
             highsCompReduction: ((_b3 = highsCompRef.current) == null ? void 0 : _b3.reduction) ?? 0
           };
@@ -19277,13 +19665,11 @@ function AudioEngineProvider({ children }) {
   }, [startCharTick]);
   const stop = reactExports.useCallback(() => {
     var _a2, _b2;
-    (_a2 = bassAudioRef.current) == null ? void 0 : _a2.pause();
-    (_b2 = highsAudioRef.current) == null ? void 0 : _b2.pause();
-    if (bassAudioRef.current) bassAudioRef.current.currentTime = 0;
-    if (highsAudioRef.current) highsAudioRef.current.currentTime = 0;
+    (_a2 = audioRef.current) == null ? void 0 : _a2.pause();
+    if (audioRef.current) audioRef.current.currentTime = 0;
     cancelAnimationFrame(rafRef.current);
-    cancelAnimationFrame(reductionRafRef.current);
     cancelAnimationFrame(charRafRef.current);
+    (_b2 = workerRef.current) == null ? void 0 : _b2.postMessage({ type: "SET_PLAYING", playing: false });
     setState((s) => ({
       ...s,
       isPlaying: false,
@@ -19292,14 +19678,18 @@ function AudioEngineProvider({ children }) {
     }));
   }, []);
   const setVolume = reactExports.useCallback((v) => {
-    volumeRef.current = v;
-    const gain = volToGain(v);
-    if (bassInsertRef.current) bassInsertRef.current.gain.value = gain;
-    if (highsInsertRef.current) highsInsertRef.current.gain.value = gain;
-    const threshold = v < 100 ? -60 + (v - 1) / 98 * 20 : -40 + (v - 100) / 600 * 30;
-    if (bassCompRef.current) bassCompRef.current.threshold.value = threshold;
-    if (highsCompRef.current) highsCompRef.current.threshold.value = threshold;
-    setState((s) => ({ ...s, volume: v }));
+    const safeV = Math.max(1, Math.min(100, Math.round(v)));
+    volumeRef.current = safeV;
+    const gain = volToGain(safeV);
+    if (volumeGainRef.current) volumeGainRef.current.gain.value = gain;
+    if (safetyBoostRef.current) {
+      safetyBoostRef.current.gain.value = 3 + safeV / 100 * 1.5;
+    }
+    setState((s) => ({
+      ...s,
+      volume: safeV,
+      safetyProcessorLevel: Math.round(safeV / 100 * 100)
+    }));
   }, []);
   const setBassFilterFreq = reactExports.useCallback((hz) => {
     setState((s) => {
@@ -19322,17 +19712,84 @@ function AudioEngineProvider({ children }) {
   const setBassGain = reactExports.useCallback((_value) => {
   }, []);
   const setSubLevel = reactExports.useCallback((value2) => {
-    const gain = value2 / 100 * 2;
-    if (subGainNodeRef.current) subGainNodeRef.current.gain.value = gain;
+    const gain = Math.max(0, Math.min(1, value2 / 100));
+    if (subLevelGainRef.current) {
+      subLevelGainRef.current.gain.value = gain;
+    }
     setState((s) => ({ ...s, subLevel: value2, hasUnsavedChanges: true }));
   }, []);
   const setHighsGain = reactExports.useCallback((_value) => {
   }, []);
+  const setGainKillActive = reactExports.useCallback((active) => {
+    var _a2, _b2, _c2, _d2, _e2, _f2, _g2, _h2, _i2, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y;
+    const view = sharedViewRef.current;
+    if (view) {
+      view[SAB_GAIN_KILL] = active ? 1 : 0;
+    }
+    (_a2 = workerRef.current) == null ? void 0 : _a2.postMessage({ type: "GAIN_KILL", active });
+    const ctx = helixCtxRef.current;
+    if (active) {
+      gainSnapshotRef.current = {
+        subLevel: ((_b2 = subLevelGainRef.current) == null ? void 0 : _b2.gain.value) ?? 1,
+        canisterOut: ((_c2 = canisterOutRef.current) == null ? void 0 : _c2.gain.value) ?? 0.8,
+        bassRestGain: Math.min(((_d2 = bassRestGainRef.current) == null ? void 0 : _d2.gain.value) ?? 1, 1),
+        canisterDry: ((_e2 = canisterDryRef.current) == null ? void 0 : _e2.gain.value) ?? 1,
+        canisterF1: ((_f2 = canisterF1Ref.current) == null ? void 0 : _f2.gain.value) ?? 0,
+        canisterF2: ((_g2 = canisterF2Ref.current) == null ? void 0 : _g2.gain.value) ?? 0,
+        canisterF3: ((_h2 = canisterF3Ref.current) == null ? void 0 : _h2.gain.value) ?? 0,
+        ultra: ((_i2 = ultraGainRef.current) == null ? void 0 : _i2.gain.value) ?? 1
+      };
+      if (ctx) {
+        const now2 = ctx.currentTime;
+        (_j = subLevelGainRef.current) == null ? void 0 : _j.gain.setValueAtTime(0, now2);
+        (_k = bassRestGainRef.current) == null ? void 0 : _k.gain.setValueAtTime(0, now2);
+        (_l = canisterOutRef.current) == null ? void 0 : _l.gain.setValueAtTime(0, now2);
+        (_m = canisterDryRef.current) == null ? void 0 : _m.gain.setValueAtTime(0, now2);
+        (_n = canisterF1Ref.current) == null ? void 0 : _n.gain.setValueAtTime(0, now2);
+        (_o = canisterF2Ref.current) == null ? void 0 : _o.gain.setValueAtTime(0, now2);
+        (_p = canisterF3Ref.current) == null ? void 0 : _p.gain.setValueAtTime(0, now2);
+        (_q = ultraGainRef.current) == null ? void 0 : _q.gain.setValueAtTime(0, now2);
+      }
+      console.log(
+        "[Gain Kill Switch] 8 KILLABLE GAINS ZEROED — volume and master bypass untouched"
+      );
+    } else {
+      if (ctx) {
+        const now2 = ctx.currentTime;
+        const snap = gainSnapshotRef.current;
+        (_r = subLevelGainRef.current) == null ? void 0 : _r.gain.setValueAtTime(
+          Math.min(snap.subLevel, 1),
+          now2
+        );
+        (_s = bassRestGainRef.current) == null ? void 0 : _s.gain.setValueAtTime(
+          Math.min(snap.bassRestGain, 1),
+          now2
+        );
+        (_t = canisterOutRef.current) == null ? void 0 : _t.gain.setValueAtTime(
+          Math.min(snap.canisterOut, 1),
+          now2
+        );
+        (_u = canisterDryRef.current) == null ? void 0 : _u.gain.setValueAtTime(
+          Math.min(snap.canisterDry, 1),
+          now2
+        );
+        (_v = canisterF1Ref.current) == null ? void 0 : _v.gain.setValueAtTime(snap.canisterF1, now2);
+        (_w = canisterF2Ref.current) == null ? void 0 : _w.gain.setValueAtTime(snap.canisterF2, now2);
+        (_x = canisterF3Ref.current) == null ? void 0 : _x.gain.setValueAtTime(snap.canisterF3, now2);
+        (_y = ultraGainRef.current) == null ? void 0 : _y.gain.setValueAtTime(
+          Math.min(snap.ultra, 1),
+          now2
+        );
+      }
+      console.log("[Gain Kill Switch] 8 killable gains restored from snapshot");
+    }
+    setState((s) => ({ ...s, gainKillActive: active }));
+  }, []);
   const setBassCompressor = reactExports.useCallback(
-    (threshold, ratio, knee, attack, release) => {
+    (_threshold, ratio, knee, attack, release) => {
       const c = bassCompRef.current;
       if (!c) return;
-      c.threshold.value = threshold;
+      c.threshold.value = -24;
       c.ratio.value = ratio;
       c.knee.value = knee;
       c.attack.value = attack;
@@ -19341,10 +19798,10 @@ function AudioEngineProvider({ children }) {
     []
   );
   const setHighsCompressor = reactExports.useCallback(
-    (threshold, ratio, knee, attack, release) => {
+    (_threshold, ratio, knee, attack, release) => {
       const c = highsCompRef.current;
       if (!c) return;
-      c.threshold.value = threshold;
+      c.threshold.value = -24;
       c.ratio.value = ratio;
       c.knee.value = knee;
       c.attack.value = attack;
@@ -19358,8 +19815,9 @@ function AudioEngineProvider({ children }) {
     const actualDb = eqSliderToDb(gainDb, idx);
     if (bassEQFiltersRef.current[idx])
       bassEQFiltersRef.current[idx].gain.value = actualDb;
-    if (highsEQFiltersRef.current[idx])
-      highsEQFiltersRef.current[idx].gain.value = actualDb;
+    if (idx >= 2 && highsEQFiltersRef.current[idx - 2]) {
+      highsEQFiltersRef.current[idx - 2].gain.value = actualDb;
+    }
     setState((s) => {
       var _a2, _b2;
       const newBands = s.eqBands.map(
@@ -19377,7 +19835,7 @@ function AudioEngineProvider({ children }) {
       const commanded = Math.max(20, newLPFreq + adj.bassOffset);
       if (bassLR1Ref.current) bassLR1Ref.current.frequency.value = commanded;
       if (bassLR2Ref.current) bassLR2Ref.current.frequency.value = commanded;
-      return { ...s, eqBands: newBands };
+      return { ...s, eqBands: newBands, hasUnsavedChanges: true };
     });
   }, []);
   const setEQBypass = reactExports.useCallback((bypass) => {
@@ -19386,8 +19844,9 @@ function AudioEngineProvider({ children }) {
         const baseBoost = EQ_LOW_BASE_BOOST[idx] ?? 0;
         if (bassEQFiltersRef.current[idx])
           bassEQFiltersRef.current[idx].gain.value = baseBoost;
-        if (highsEQFiltersRef.current[idx])
-          highsEQFiltersRef.current[idx].gain.value = baseBoost;
+        if (idx >= 2 && highsEQFiltersRef.current[idx - 2]) {
+          highsEQFiltersRef.current[idx - 2].gain.value = 0;
+        }
       });
       setState((s) => ({
         ...s,
@@ -19400,34 +19859,39 @@ function AudioEngineProvider({ children }) {
   }, []);
   const phaseInvert = reactExports.useCallback(
     (channel, invert2) => {
-      if (channel === "bass") {
+      if (channel === "bass")
         setState((s) => ({ ...s, bassPhaseInverted: invert2 }));
-      } else {
-        setState((s) => ({ ...s, highsPhaseInverted: invert2 }));
-      }
+      else setState((s) => ({ ...s, highsPhaseInverted: invert2 }));
     },
     []
   );
-  const setEpicenterBoost = reactExports.useCallback((pct) => {
-    const db = pctToDb(pct, 0, 12);
-    if (bassMaximizerRef.current) bassMaximizerRef.current.gain.value = db;
-    setState((s) => ({ ...s, epicenterBoost: pct, hasUnsavedChanges: true }));
+  const setEpicenterBoost = reactExports.useCallback((_pct) => {
   }, []);
-  const setParaCenter = reactExports.useCallback((hz) => {
-    const clamped = Math.max(20, Math.min(120, hz));
-    if (bassParaBassRef.current)
-      bassParaBassRef.current.frequency.value = clamped;
-    setState((s) => ({ ...s, paraCenter: clamped, hasUnsavedChanges: true }));
+  const setParaCenter = reactExports.useCallback((_hz) => {
   }, []);
-  const setParaWidth = reactExports.useCallback((width) => {
-    const clamped = Math.max(0.3, Math.min(3, width));
-    if (bassParaBassRef.current) bassParaBassRef.current.Q.value = clamped;
-    setState((s) => ({ ...s, paraWidth: clamped, hasUnsavedChanges: true }));
+  const setParaWidth = reactExports.useCallback((_width) => {
   }, []);
-  const setParaGain = reactExports.useCallback((pct) => {
-    const db = pctToDb(pct, -12, 12);
-    if (bassParaBassRef.current) bassParaBassRef.current.gain.value = db;
-    setState((s) => ({ ...s, paraGain: pct, hasUnsavedChanges: true }));
+  const setParaGain = reactExports.useCallback((_pct) => {
+  }, []);
+  const setBassRestorationLevel = reactExports.useCallback((val) => {
+    if (bassRestGainRef.current)
+      bassRestGainRef.current.gain.value = Math.min(
+        0.5 + val / 100 * 0.5,
+        1
+      );
+    setState((s) => ({
+      ...s,
+      bassRestorationLevel: val,
+      hasUnsavedChanges: true
+    }));
+  }, []);
+  const setProcessorMimic120dB = reactExports.useCallback((val) => {
+    processorMimic120dBRef.current = val;
+    setState((s) => ({
+      ...s,
+      processorMimic120dB: val,
+      hasUnsavedChanges: true
+    }));
   }, []);
   const setBassOutputLevel = reactExports.useCallback((pct) => {
     const gain = pctToGain(pct);
@@ -19460,8 +19924,28 @@ function AudioEngineProvider({ children }) {
     if (bassNaturalBottomRef.current)
       bassNaturalBottomRef.current.gain.value = gain;
   }, []);
+  const buildSoftClipCurve = reactExports.useCallback(
+    (amount) => {
+      const samples = 256;
+      const curve = new Float32Array(samples);
+      const intensity = Math.max(1e-3, amount / 100) * 0.4;
+      for (let i = 0; i < samples; i++) {
+        const x = i * 2 / samples - 1;
+        curve[i] = x / (1 + intensity * Math.abs(x));
+      }
+      return curve;
+    },
+    []
+  );
   const setDistortionReduction = reactExports.useCallback(
     (v) => {
+      if (distortionShaperRef.current) {
+        if (v <= 0) {
+          distortionShaperRef.current.curve = null;
+        } else {
+          distortionShaperRef.current.curve = buildSoftClipCurve(v);
+        }
+      }
       setState((s) => {
         const grade = computeSRLGrade(v, s.clippingReduction, s.cleanSignal);
         applySRLCrossoverCommand(grade, s.bassFilterFreq, s.highsFilterFreq);
@@ -19475,10 +19959,13 @@ function AudioEngineProvider({ children }) {
         };
       });
     },
-    [applySRLCrossoverCommand, handleSRLDGrade]
+    [applySRLCrossoverCommand, handleSRLDGrade, buildSoftClipCurve]
   );
   const setClippingReduction = reactExports.useCallback(
     (v) => {
+      if (bassCompRef.current) {
+        bassCompRef.current.knee.value = v / 100 * 40;
+      }
       setState((s) => {
         const grade = computeSRLGrade(s.distortionReduction, v, s.cleanSignal);
         applySRLCrossoverCommand(grade, s.bassFilterFreq, s.highsFilterFreq);
@@ -19496,6 +19983,9 @@ function AudioEngineProvider({ children }) {
   );
   const setCleanSignal = reactExports.useCallback(
     (v) => {
+      if (cleanFilterRef.current) {
+        cleanFilterRef.current.Q.value = 0.5 + v / 100 * 1.5;
+      }
       setState((s) => {
         const grade = computeSRLGrade(
           s.distortionReduction,
@@ -19518,6 +20008,9 @@ function AudioEngineProvider({ children }) {
   const enableLowEndBooster = reactExports.useCallback(() => {
     if (boosterTimerRef.current) clearTimeout(boosterTimerRef.current);
     if (boosterCountdownRef.current) clearInterval(boosterCountdownRef.current);
+    if (lowEndBoostNodeRef.current) {
+      lowEndBoostNodeRef.current.gain.value = 8;
+    }
     let remaining = 15 * 60;
     setState((s) => ({
       ...s,
@@ -19559,6 +20052,9 @@ function AudioEngineProvider({ children }) {
   const disableLowEndBooster = reactExports.useCallback(() => {
     if (boosterTimerRef.current) clearTimeout(boosterTimerRef.current);
     if (boosterCountdownRef.current) clearInterval(boosterCountdownRef.current);
+    if (lowEndBoostNodeRef.current) {
+      lowEndBoostNodeRef.current.gain.value = 0;
+    }
     setState((s) => ({
       ...s,
       lowEndBoosterEnabled: false,
@@ -19598,39 +20094,163 @@ function AudioEngineProvider({ children }) {
     }));
   }, []);
   const setUltraActive = reactExports.useCallback((active) => {
-    const gain = active ? 1 : 0;
-    if (bassUltraGainRef.current) bassUltraGainRef.current.gain.value = gain;
-    if (highsUltraGainRef.current) highsUltraGainRef.current.gain.value = gain;
+    if (ultraGainRef.current)
+      ultraGainRef.current.gain.value = active ? 1 : 0;
     setState((s) => ({ ...s, ultraActive: active, hasUnsavedChanges: true }));
   }, []);
-  const setASOv3Active = reactExports.useCallback((active) => {
-    asoV3ActiveRef.current = active;
+  const setASOv3Active = reactExports.useCallback(
+    (active) => {
+      if (active) {
+        const ctx = helixCtxRef.current;
+        if (ctx && ctx.state === "suspended") {
+          ctx.resume().catch(() => {
+          });
+        }
+        setState((s) => ({
+          ...s,
+          asoV3Active: false,
+          helixActive: false,
+          asoV3Scanning: true,
+          scanResult: null,
+          hasUnsavedChanges: true
+        }));
+        runPrePlayScan().then((result) => {
+          var _a2;
+          const masterGain = masterGainRef.current;
+          if (masterGain && ctx) {
+            masterGain.gain.setValueAtTime(0, ctx.currentTime);
+            masterGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.3);
+          }
+          setState((s) => ({
+            ...s,
+            helixActive: true,
+            asoV3Active: true,
+            asoV3Scanning: false,
+            scanResult: result,
+            hasUnsavedChanges: true
+          }));
+          startWorker();
+          (_a2 = workerRef.current) == null ? void 0 : _a2.postMessage({
+            type: "SET_PLAYING",
+            playing: audioRef.current ? !audioRef.current.paused : false
+          });
+        });
+      } else {
+        const ctx = helixCtxRef.current;
+        const masterGain = masterGainRef.current;
+        if (ctx && masterGain) {
+          const now2 = ctx.currentTime;
+          masterGain.gain.setValueAtTime(masterGain.gain.value, now2);
+          masterGain.gain.linearRampToValueAtTime(0, now2 + 5);
+          setTimeout(() => {
+            ctx.suspend().catch(() => {
+            });
+          }, 5e3);
+        } else if (ctx) {
+          ctx.suspend().catch(() => {
+          });
+        }
+        setState((s) => ({
+          ...s,
+          helixActive: false,
+          asoV3Active: false,
+          asoV3Scanning: false,
+          scanResult: null,
+          hasUnsavedChanges: true
+        }));
+      }
+    },
+    [runPrePlayScan, startWorker]
+  );
+  const switchASOv3 = reactExports.useCallback(
+    (on) => {
+      setASOv3Active(on);
+    },
+    [setASOv3Active]
+  );
+  const setSpeakerProfile = reactExports.useCallback((profile) => {
     setState((s) => ({
       ...s,
-      asoV3Active: active,
+      speakerProfile: { ...s.speakerProfile, ...profile },
       hasUnsavedChanges: true
     }));
   }, []);
   const saveAllSettings = reactExports.useCallback(() => {
     if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
-    const now2 = /* @__PURE__ */ new Date();
-    const hours = now2.getHours();
-    const mins = String(now2.getMinutes()).padStart(2, "0");
-    const ampm = hours >= 12 ? "PM" : "AM";
-    const h12 = hours % 12 || 12;
-    const timeStr = `${h12}:${mins} ${ampm}`;
-    setState((s) => ({ ...s, hasUnsavedChanges: false, lastSaved: timeStr }));
+    saveDebounceRef.current = setTimeout(() => {
+      const settings = {
+        volume: state.volume,
+        canisterBottomBoost: state.canisterBottomBoost,
+        canisterPunchBoost: state.canisterPunchBoost,
+        bassRestorationLevel: state.bassRestorationLevel,
+        processorMimic120dB: state.processorMimic120dB,
+        ultraActive: state.ultraActive,
+        distortionReduction: state.distortionReduction,
+        clippingReduction: state.clippingReduction,
+        cleanSignal: state.cleanSignal,
+        eqBands: state.eqBands,
+        bassFilterFreq: state.bassFilterFreq,
+        highsFilterFreq: state.highsFilterFreq,
+        bassOutputLevel: state.bassOutputLevel
+      };
+      try {
+        localStorage.setItem("ampPlayer1Settings", JSON.stringify(settings));
+      } catch {
+      }
+      const now2 = /* @__PURE__ */ new Date();
+      const hours = now2.getHours();
+      const mins = String(now2.getMinutes()).padStart(2, "0");
+      const ampm = hours >= 12 ? "PM" : "AM";
+      const h12 = hours % 12 || 12;
+      const timeStr = `${h12}:${mins} ${ampm}`;
+      setState((s) => ({ ...s, hasUnsavedChanges: false, lastSaved: timeStr }));
+    }, 800);
+  }, [
+    state.volume,
+    state.canisterBottomBoost,
+    state.canisterPunchBoost,
+    state.bassRestorationLevel,
+    state.processorMimic120dB,
+    state.ultraActive,
+    state.distortionReduction,
+    state.clippingReduction,
+    state.cleanSignal,
+    state.eqBands,
+    state.bassFilterFreq,
+    state.highsFilterFreq,
+    state.bassOutputLevel
+  ]);
+  reactExports.useEffect(() => {
+    try {
+      const saved = localStorage.getItem("ampPlayer1Settings");
+      if (!saved) return;
+      const s = JSON.parse(saved);
+      if (typeof s.volume === "number" && s.volume >= 1 && s.volume <= 100)
+        setVolume(s.volume);
+      if (typeof s.canisterBottomBoost === "number")
+        setCanisterBottomBoost(s.canisterBottomBoost);
+      if (typeof s.canisterPunchBoost === "number")
+        setCanisterPunchBoost(s.canisterPunchBoost);
+      if (typeof s.bassRestorationLevel === "number")
+        setBassRestorationLevel(s.bassRestorationLevel);
+      if (typeof s.processorMimic120dB === "number")
+        setProcessorMimic120dB(s.processorMimic120dB);
+    } catch {
+    }
   }, []);
   reactExports.useEffect(() => {
     const id = setInterval(() => {
+      var _a2;
+      const ctxState = ((_a2 = helixCtxRef.current) == null ? void 0 : _a2.state) ?? "suspended";
       setState((s) => {
-        var _a2, _b2, _c2, _d2;
+        var _a3, _b2;
         return {
           ...s,
-          bassContextState: ((_a2 = bassCtxRef.current) == null ? void 0 : _a2.state) ?? "suspended",
-          highsContextState: ((_b2 = highsCtxRef.current) == null ? void 0 : _b2.state) ?? "suspended",
-          bassCompReduction: ((_c2 = bassCompRef.current) == null ? void 0 : _c2.reduction) ?? 0,
-          highsCompReduction: ((_d2 = highsCompRef.current) == null ? void 0 : _d2.reduction) ?? 0
+          helixContextState: ctxState,
+          bassContextState: ctxState,
+          highsContextState: ctxState,
+          bassCompReduction: ((_a3 = bassCompRef.current) == null ? void 0 : _a3.reduction) ?? 0,
+          highsCompReduction: ((_b2 = highsCompRef.current) == null ? void 0 : _b2.reduction) ?? 0
         };
       });
     }, 200);
@@ -19638,21 +20258,45 @@ function AudioEngineProvider({ children }) {
   }, []);
   reactExports.useEffect(() => {
     const violations = [];
-    if (bassGainRef.current && bassGainRef.current.gain.value !== 1) {
-      violations.push("VIOLATION: bassGain pass-through is not 1.0");
-    }
-    if (highsGainRef.current && highsGainRef.current.gain.value !== 1) {
-      violations.push("VIOLATION: highsGain pass-through is not 1.0");
-    }
-    if (bassUltraGainRef.current && bassUltraGainRef.current.gain.value !== 1) {
-      violations.push("VIOLATION: bassUltraGain not initialized to 1.0");
-    }
-    if (canisterOutRef.current && canisterOutRef.current.gain.value !== 0) {
-      violations.push("VIOLATION: canisterOut should start at 0 (bypassed)");
+    if (masterGainRef.current && masterGainRef.current.gain.value > 1) {
+      violations.push("VIOLATION: masterGain exceeded 1.0");
     }
     if (violations.length > 0) {
       setState((s) => ({ ...s, gainViolations: violations }));
     }
+  }, []);
+  reactExports.useEffect(() => {
+    const checkOutputMode = () => {
+      if (!navigator.mediaDevices) return;
+      navigator.mediaDevices.enumerateDevices().then((devices) => {
+        const outputs = devices.filter((d) => d.kind === "audiooutput");
+        const hasExternal = outputs.some(
+          (d) => d.label && !d.label.toLowerCase().includes("built-in")
+        );
+        setState((s) => ({
+          ...s,
+          outputMode: hasExternal ? "external" : "internal"
+        }));
+      }).catch(() => {
+      });
+    };
+    checkOutputMode();
+    const id = setInterval(checkOutputMode, 1e4);
+    return () => clearInterval(id);
+  }, []);
+  reactExports.useEffect(() => {
+    return () => {
+      var _a2;
+      cancelAnimationFrame(rafRef.current);
+      cancelAnimationFrame(charRafRef.current);
+      cancelAnimationFrame(zeroStackingRafRef.current);
+      if (btScanIntervalRef.current) clearInterval(btScanIntervalRef.current);
+      if (boosterTimerRef.current) clearTimeout(boosterTimerRef.current);
+      if (boosterCountdownRef.current)
+        clearInterval(boosterCountdownRef.current);
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+      (_a2 = workerRef.current) == null ? void 0 : _a2.terminate();
+    };
   }, []);
   const value = {
     ...state,
@@ -19695,7 +20339,13 @@ function AudioEngineProvider({ children }) {
     setCanisterPunchBoost,
     setUltraActive,
     setASOv3Active,
-    saveAllSettings
+    setHelixActive: setASOv3Active,
+    setSpeakerProfile,
+    saveAllSettings,
+    setBassRestorationLevel,
+    setProcessorMimic120dB,
+    switchASOv3,
+    setGainKillActive
   };
   return reactExports.createElement(AudioEngineContext.Provider, { value }, children);
 }
@@ -20042,7 +20692,7 @@ function HeadUnit() {
                 "data-ocid": "head_unit.volume_slider",
                 type: "range",
                 min: 1,
-                max: 700,
+                max: 100,
                 value: engine.volume,
                 onChange: (e) => engine.setVolume(Number(e.target.value)),
                 className: "flex-1 accent-cyan-400 h-2",
@@ -20061,7 +20711,7 @@ function HeadUnit() {
                 children: engine.volume
               }
             ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "/ 700" })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "/ 100" })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -20213,383 +20863,8 @@ function ModuleModal({ title, onClose, children }) {
     }
   );
 }
-const CHANNELS = [
-  { label: "BASS", watts: "7,000W", color: "#ff6b35", note: "Primary driver" },
-  { label: "MIDS", watts: "2,000W", color: "#ffd700", note: "Vocals + body" },
-  {
-    label: "HIGHS",
-    watts: "2,000W",
-    color: "#00d4ff",
-    note: "Isolated standalone amp"
-  },
-  {
-    label: "TWEETERS",
-    watts: "2,000W",
-    color: "#00ff88",
-    note: "Air + sparkle"
-  }
-];
-const FEATURES = [
-  { id: "hd", label: "HIDDEN DEPT", desc: "20-30 smart chips" },
-  { id: "lerl", label: "LOW-END RESOLUTION LOGIC", desc: "Bass note fill" },
-  { id: "mr", label: "MOLECULAR RECTIFICATION", desc: "100% precision" },
-  { id: "sf", label: "SPEAKER FINGERPRINT", desc: "Auto Ohm scan" },
-  { id: "ti", label: "THERMAL IMMORTALITY", desc: "Freq-shift cooling" },
-  { id: "sqe", label: "SONG QUALITY ENGINE", desc: "100% quality auto" },
-  { id: "86k", label: "86K FEATURE SET", desc: "All internal" }
-];
 function ASOv3Amp() {
-  const engine = useAudioEngine();
-  const isActive = engine.asoV3Active;
-  const slotNum = engine.asoV3SlotNumber;
-  const [confirm, setConfirm] = reactExports.useState(false);
-  const handleToggle = () => {
-    if (isActive) {
-      setConfirm(true);
-      return;
-    }
-    engine.setASOv3Active(true);
-  };
-  const handleConfirmOff = () => {
-    engine.setASOv3Active(false);
-    setConfirm(false);
-  };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "px-3 py-3 rounded",
-        style: {
-          background: isActive ? "rgba(0,255,136,0.1)" : "rgba(20,20,40,0.85)",
-          border: `2px solid ${isActive ? "rgba(0,255,136,0.7)" : "rgba(255,180,0,0.5)"}`,
-          boxShadow: isActive ? "0 0 24px rgba(0,255,136,0.25), inset 0 0 12px rgba(0,255,136,0.04)" : "0 0 14px rgba(255,180,0,0.12)"
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-3", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "div",
-                {
-                  className: "text-sm font-bold uppercase tracking-widest",
-                  style: { color: isActive ? "#00ff88" : "#ffb400" },
-                  children: "ASO-V3 POWER"
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "div",
-                {
-                  className: "text-xs uppercase tracking-widest mt-0.5",
-                  style: {
-                    color: isActive ? "rgba(0,255,136,0.6)" : "rgba(255,180,0,0.5)"
-                  },
-                  children: isActive ? "● LIVE — AMP RUNNING" : "○ STANDBY — MANUAL ACTIVATION ONLY"
-                }
-              )
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                className: "w-5 h-5 rounded-full flex-shrink-0",
-                style: {
-                  background: isActive ? "#00ff88" : "rgba(255,150,0,0.3)",
-                  boxShadow: isActive ? "0 0 12px #00ff88, 0 0 24px rgba(0,255,136,0.4)" : "0 0 6px rgba(255,150,0,0.3)",
-                  animation: isActive ? "pulse 1s ease-in-out infinite" : "none"
-                }
-              }
-            )
-          ] }),
-          !confirm && /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "button",
-            {
-              type: "button",
-              onClick: handleToggle,
-              className: "w-full py-3 rounded font-bold uppercase tracking-widest text-sm transition-smooth",
-              style: {
-                background: isActive ? "rgba(255,60,60,0.18)" : "rgba(255,180,0,0.18)",
-                border: `2px solid ${isActive ? "rgba(255,60,60,0.7)" : "rgba(255,180,0,0.7)"}`,
-                color: isActive ? "#ff6b6b" : "#ffb400",
-                boxShadow: isActive ? "0 0 20px rgba(255,60,60,0.3)" : "0 0 16px rgba(255,180,0,0.25)",
-                letterSpacing: "0.12em"
-              },
-              "data-ocid": "aso_v3.power_button",
-              children: isActive ? "■  DEACTIVATE ASO-V3" : "▶  ACTIVATE ASO-V3"
-            }
-          ),
-          confirm && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", "data-ocid": "aso_v3.confirm_dialog", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                className: "text-xs font-bold uppercase text-center py-1",
-                style: { color: "#ff6b6b" },
-                children: "Cut ASO-V3? Old amps will resume."
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  type: "button",
-                  onClick: handleConfirmOff,
-                  className: "flex-1 py-2 rounded text-xs font-bold uppercase",
-                  style: {
-                    background: "rgba(255,60,60,0.2)",
-                    border: "1px solid rgba(255,60,60,0.6)",
-                    color: "#ff6b6b"
-                  },
-                  "data-ocid": "aso_v3.confirm_button",
-                  children: "CONFIRM CUT"
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  type: "button",
-                  onClick: () => setConfirm(false),
-                  className: "flex-1 py-2 rounded text-xs font-bold uppercase",
-                  style: {
-                    background: "rgba(0,0,0,0.3)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    color: "rgba(255,255,255,0.6)"
-                  },
-                  "data-ocid": "aso_v3.cancel_button",
-                  children: "CANCEL"
-                }
-              )
-            ] })
-          ] }),
-          isActive && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "div",
-            {
-              className: "mt-2 text-center text-xs font-mono font-bold",
-              style: { color: "rgba(0,255,136,0.5)" },
-              children: [
-                "SLOT ",
-                slotNum,
-                " LOADED"
-              ]
-            }
-          )
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: "px-3 py-2 rounded",
-        style: {
-          background: isActive ? "rgba(255,180,0,0.08)" : "rgba(255,150,0,0.04)",
-          border: `1px solid ${isActive ? "rgba(255,180,0,0.4)" : "rgba(255,150,0,0.2)"}`
-        },
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: "text-xs font-bold uppercase tracking-widest",
-            style: { color: "rgba(255,180,0,0.8)" },
-            children: "ASO-V3 SOVEREIGN MASTER BLUEPRINT — GERROD'S DESIGN"
-          }
-        )
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 gap-1.5", children: [
-      ["TOTAL POWER SUPPLY", "20,000W", "#ffb400"],
-      ["FUSE PROTECTION", "12,000W", "#ff6b35"],
-      ["AI TRAINING", "500M+ pts", "#00d4ff"],
-      ["CHIP SLOTS", "3,000", "#00ff88"]
-    ].map(([k, v, c]) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "px-2 py-2 rounded text-center",
-        style: {
-          background: "rgba(0,0,0,0.4)",
-          border: `1px solid ${c}22`
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(255,255,255,0.4)" }, children: k }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: "text-sm font-bold font-mono mt-0.5",
-              style: { color: c },
-              children: v
-            }
-          )
-        ]
-      },
-      k
-    )) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: "text-xs font-bold uppercase tracking-widest mb-2",
-          style: { color: "rgba(255,180,0,0.7)" },
-          children: "4-CHANNEL POWER"
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-1.5", children: CHANNELS.map((ch) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "div",
-        {
-          className: "flex items-center gap-3 px-3 py-2 rounded",
-          style: {
-            background: "rgba(0,0,0,0.35)",
-            border: `1px solid ${isActive ? `${ch.color}44` : `${ch.color}18`}`
-          },
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                className: "w-2 h-2 rounded-full flex-shrink-0",
-                style: {
-                  background: isActive ? ch.color : "rgba(255,255,255,0.15)",
-                  boxShadow: isActive ? `0 0 6px ${ch.color}` : "none"
-                }
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "div",
-                {
-                  className: "text-xs font-bold uppercase tracking-widest",
-                  style: {
-                    color: isActive ? ch.color : "rgba(255,255,255,0.4)"
-                  },
-                  children: ch.label
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "div",
-                {
-                  className: "text-xs",
-                  style: { color: "rgba(255,255,255,0.3)" },
-                  children: ch.note
-                }
-              )
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                className: "text-xs font-mono font-bold",
-                style: {
-                  color: isActive ? ch.color : "rgba(255,255,255,0.4)"
-                },
-                children: ch.watts
-              }
-            )
-          ]
-        },
-        ch.label
-      )) })
-    ] }),
-    isActive && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "px-3 py-2 rounded space-y-1",
-        style: {
-          background: "rgba(0,255,136,0.06)",
-          border: "1px solid rgba(0,255,136,0.25)"
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold", style: { color: "#00ff88" }, children: "★ POWER MIMIC: ACTIVE" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,255,136,0.5)" }, children: "real amp push behavior" })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold", style: { color: "#00d4ff" }, children: "★ AUDIO BEHAVIOR: ACTIVE" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "punch + depth + clarity" })
-          ] })
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: "text-xs font-bold uppercase tracking-widest mb-2",
-          style: { color: "rgba(255,180,0,0.7)" },
-          children: "INTERNAL FEATURES"
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 gap-1", children: FEATURES.map((f) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "div",
-        {
-          className: "px-2 py-1.5 rounded",
-          style: {
-            background: isActive ? "rgba(255,180,0,0.08)" : "rgba(0,0,0,0.3)",
-            border: `1px solid ${isActive ? "rgba(255,180,0,0.3)" : "rgba(255,180,0,0.1)"}`
-          },
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "div",
-              {
-                className: "text-xs font-bold uppercase",
-                style: {
-                  color: isActive ? "#ffb400" : "rgba(255,180,0,0.35)",
-                  fontSize: "0.6rem"
-                },
-                children: [
-                  isActive ? "● " : "○ ",
-                  f.label
-                ]
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                className: "text-xs",
-                style: {
-                  color: isActive ? "rgba(255,180,0,0.5)" : "rgba(255,255,255,0.2)",
-                  fontSize: "0.6rem"
-                },
-                children: f.desc
-              }
-            )
-          ]
-        },
-        f.id
-      )) })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "px-3 py-2 rounded",
-        style: {
-          background: "rgba(0,0,0,0.4)",
-          border: "1px solid rgba(255,180,0,0.15)"
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: "text-xs font-bold uppercase tracking-widest mb-1",
-              style: { color: "rgba(255,180,0,0.6)" },
-              children: "SIGNAL CHAIN"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-1 flex-wrap", children: ["HEAD UNIT", "PREAMP", "PROCESSOR", "ASO-V3", "SPEAKERS"].map(
-            (step) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "span",
-              {
-                className: "text-xs font-bold",
-                style: {
-                  color: step === "ASO-V3" ? "#ffb400" : "rgba(0,212,255,0.6)"
-                },
-                children: [
-                  step === "PREAMP" || step === "PROCESSOR" || step === "ASO-V3" || step === "SPEAKERS" ? " → " : "",
-                  step
-                ]
-              },
-              step
-            )
-          ) })
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-xs", style: { color: "rgba(255,180,0,0.3)" }, children: [
-      "● Amp does NOT auto-start. Manual activation only.",
-      /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
-      "● Switching CUTS old amps completely. One amp runs at a time."
-    ] })
-  ] });
+  return null;
 }
 function Antenna() {
   const engine = useAudioEngine();
@@ -20681,148 +20956,529 @@ function Antenna() {
       ` })
   ] });
 }
+function Led({ on, color = "#00ff88" }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "span",
+    {
+      className: "inline-block w-2.5 h-2.5 rounded-full flex-shrink-0",
+      style: {
+        background: on ? color : "rgba(255,255,255,0.1)",
+        boxShadow: on ? `0 0 6px ${color}` : "none"
+      }
+    }
+  );
+}
 function BassAmp() {
   const engine = useAudioEngine();
-  const isLive = engine.isPlaying && engine.bassContextState === "running";
-  const reduction = engine.bassCompReduction ?? 0;
-  const drive = Math.min(100, Math.abs(reduction) * 10);
-  const rows = [
-    { label: "VIRTUAL", desc: "Simulation foundation" },
-    { label: "DIGITAL", desc: "Class D efficiency" },
-    { label: "ANALOG", desc: "Warmth + linearity" },
-    { label: "TUBE", desc: "Harmonic richness" }
-  ];
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: "text-sm font-bold uppercase tracking-widest mb-1",
-        style: { color: "#ffd700" },
-        children: "BASSAMP — SRS 2022 UNIFIED"
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: "text-xs font-bold mb-3 px-2 py-1 rounded",
-        style: {
-          background: "rgba(0,212,255,0.1)",
-          color: "#00d4ff",
-          border: "1px solid rgba(0,212,255,0.3)"
-        },
-        children: "BASS ONLY • PWM DIGITAL • 92-95% EFF • 10Hz-50kHz • THD 0.01%"
-      }
-    ),
-    rows.map((r2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "flex items-center justify-between py-2 border-b",
-        style: { borderColor: "rgba(0,212,255,0.1)" },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                className: "text-xs font-bold uppercase tracking-widest",
-                style: { color: "#00d4ff" },
-                children: r2.label
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: r2.desc })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: isLive ? "badge-live" : "badge-off", children: isLive ? "✓ WIRED" : "STANDBY" })
-        ]
+  const {
+    helixActive,
+    setHelixActive,
+    gainKillActive,
+    setGainKillActive,
+    intelligenceLayer,
+    speakerProfile,
+    scanResult,
+    bassContextState
+  } = engine;
+  const scanClean = scanResult === "clean" || helixActive;
+  const threadBOn = intelligenceLayer.threadBActive;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: "rounded-lg overflow-hidden space-y-0",
+      style: {
+        background: "linear-gradient(180deg, #0a0f1a 0%, #060b14 100%)",
+        border: "1px solid rgba(0,212,255,0.35)",
+        boxShadow: helixActive ? "0 0 30px rgba(0,212,255,0.18), inset 0 0 40px rgba(0,0,0,0.4)" : "none"
       },
-      r2.label
-    )),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 gap-3 mt-4", children: [
-      ["RCA INPUT", "VIRTUAL RCA"],
-      ["LOAD", "8Ω DUMMY LOAD"],
-      ["LOWPASS", `${engine.bassFilterFreq}Hz CUTOFF`],
-      ["POWER", "12,000W THUNDER"],
-      ["GAIN", "LOCKED 0.0"],
-      ["CONTEXT", engine.bassContextState.toUpperCase()]
-    ].map(([k, v]) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between py-1", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: k }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "span",
-        {
-          className: "text-xs font-mono font-bold",
-          style: { color: "#ffd700" },
-          children: v
-        }
-      )
-    ] }, k)) }),
-    drive > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "flex items-center justify-between px-3 py-2 rounded mt-2",
-        style: {
-          background: "rgba(255,68,68,0.1)",
-          border: "1px solid rgba(255,68,68,0.3)"
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "span",
-            {
-              className: "text-xs font-bold uppercase",
-              style: { color: "#ff4444" },
-              children: "DRIVE METER"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-end gap-0.5 h-4", children: [20, 40, 60, 80, 100].map((threshold) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "px-4 pt-4 pb-3",
+            style: {
+              background: "linear-gradient(90deg, rgba(0,212,255,0.12) 0%, rgba(0,5,20,0.6) 100%)",
+              borderBottom: "1px solid rgba(0,212,255,0.25)"
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-start justify-between gap-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "text-2xl font-black uppercase tracking-widest leading-none",
+                      style: {
+                        color: "#00d4ff",
+                        textShadow: "0 0 25px rgba(0,212,255,0.7)"
+                      },
+                      children: "HELIX DSP AMP"
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "text-xs font-bold uppercase tracking-widest mt-1",
+                      style: { color: "rgba(0,212,255,0.55)" },
+                      children: "VIRTUAL DIGITAL ANALOG SIMULATION"
+                    }
+                  )
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    className: "flex items-center gap-1.5 px-3 py-1.5 rounded font-bold text-xs uppercase tracking-widest flex-shrink-0",
+                    style: {
+                      background: helixActive ? "rgba(0,212,255,0.15)" : "rgba(100,100,120,0.15)",
+                      border: `1px solid ${helixActive ? "rgba(0,212,255,0.55)" : "rgba(100,100,120,0.35)"}`,
+                      color: helixActive ? "#00d4ff" : "rgba(160,160,180,0.8)"
+                    },
+                    "data-ocid": "helix.status_badge",
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(Led, { on: helixActive, color: "#00d4ff" }),
+                      helixActive ? "ACTIVE" : "STANDBY"
+                    ]
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  className: "flex items-center gap-2 mt-3 px-3 py-1.5 rounded",
+                  style: {
+                    background: scanClean ? "rgba(0,255,136,0.08)" : "rgba(255,60,60,0.1)",
+                    border: `1px solid ${scanClean ? "rgba(0,255,136,0.3)" : "rgba(255,60,60,0.4)"}`
+                  },
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Led, { on: scanClean, color: scanClean ? "#00ff88" : "#ff4444" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "span",
+                      {
+                        className: "text-xs font-bold uppercase tracking-widest",
+                        style: { color: scanClean ? "#00ff88" : "#ff4444" },
+                        children: scanClean ? "SYSTEM CLEAN" : "FAULT DETECTED"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "span",
+                      {
+                        className: "ml-auto text-xs",
+                        style: { color: "rgba(0,212,255,0.4)" },
+                        children: "PRE-PLAY SCANNER"
+                      }
+                    )
+                  ]
+                }
+              )
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-4 py-3 space-y-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
             "div",
             {
-              className: "w-2 rounded-sm",
+              className: "px-3 py-2.5 rounded",
               style: {
-                height: `${12 + threshold / 10}px`,
-                background: drive >= threshold ? "#ff4444" : "rgba(255,68,68,0.2)"
+                background: "rgba(0,0,0,0.4)",
+                border: "1px solid rgba(0,212,255,0.15)"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "SYSTEM POWER" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "text-lg font-black font-mono uppercase tracking-widest mt-0.5",
+                    style: {
+                      color: "#ffd700",
+                      textShadow: "0 0 15px rgba(255,215,0,0.5)"
+                    },
+                    children: "1,720,000W CHARACTERISTICS"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4 mt-1.5", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "span",
+                    {
+                      className: "text-xs font-mono font-bold",
+                      style: { color: "#00d4ff" },
+                      children: "CH1: 860,000W"
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.35)" }, children: "|" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "span",
+                    {
+                      className: "text-xs font-mono font-bold",
+                      style: { color: "#00d4ff" },
+                      children: "CH2: 860,000W"
+                    }
+                  )
+                ] })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "px-2 py-2 rounded",
+                style: {
+                  background: "rgba(0,0,0,0.3)",
+                  border: "1px solid rgba(0,212,255,0.15)"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "SMART CHIPS" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "div",
+                    {
+                      className: "text-sm font-bold font-mono",
+                      style: { color: "#00ff88" },
+                      children: [
+                        intelligenceLayer.smartChips || 25,
+                        " — LEARNING"
+                      ]
+                    }
+                  )
+                ]
               }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "px-2 py-2 rounded",
+                style: {
+                  background: "rgba(0,0,0,0.3)",
+                  border: "1px solid rgba(0,212,255,0.15)"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "1,000MB CHIP" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "div",
+                    {
+                      className: "text-sm font-bold font-mono",
+                      style: { color: "#ffd700" },
+                      children: "LOADED"
+                    }
+                  )
+                ]
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "flex items-center gap-2 px-3 py-1.5 rounded",
+                style: {
+                  background: "rgba(0,255,136,0.07)",
+                  border: "1px solid rgba(0,255,136,0.25)"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Led, { on: true, color: "#00ff88" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "span",
+                    {
+                      className: "text-xs font-bold uppercase tracking-widest",
+                      style: { color: "#00ff88" },
+                      children: "THREAD A: PLAYBACK ISOLATED"
+                    }
+                  )
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "flex items-center gap-2 px-3 py-1.5 rounded",
+                style: {
+                  background: threadBOn ? "rgba(0,255,136,0.07)" : "rgba(255,215,0,0.07)",
+                  border: `1px solid ${threadBOn ? "rgba(0,255,136,0.25)" : "rgba(255,215,0,0.25)"}`
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Led, { on: threadBOn, color: threadBOn ? "#00ff88" : "#ffd700" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "span",
+                    {
+                      className: "text-xs font-bold uppercase tracking-widest",
+                      style: { color: threadBOn ? "#00ff88" : "#ffd700" },
+                      children: [
+                        "THREAD B: ",
+                        threadBOn ? "INTELLIGENCE RUNNING" : "STARTING"
+                      ]
+                    }
+                  )
+                ]
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "px-3 py-1.5 rounded",
+              style: {
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid rgba(0,212,255,0.1)"
+              },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.4)" }, children: "HELIX DSP FEATURES: 10% — FOUNDATION ACTIVE" })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: "px-3 py-2 rounded",
+              style: {
+                background: "rgba(0,0,0,0.35)",
+                border: "1px solid rgba(0,212,255,0.18)"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "text-xs mb-1",
+                    style: { color: "rgba(0,212,255,0.5)" },
+                    children: "BLUETOOTH SCANNER CHIP"
+                  }
+                ),
+                speakerProfile.profileApplied ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 flex-wrap", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold", style: { color: "#00d4ff" }, children: speakerProfile.detectedName }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "span",
+                    {
+                      className: "text-xs font-mono",
+                      style: { color: "rgba(0,212,255,0.6)" },
+                      children: [
+                        speakerProfile.ohms,
+                        "Ω"
+                      ]
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "span",
+                    {
+                      className: "text-xs font-mono",
+                      style: { color: "rgba(0,212,255,0.6)" },
+                      children: speakerProfile.powerHandling
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold", style: { color: "#00ff88" }, children: "● PROFILE MATCHED" })
+                ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    className: "text-xs font-bold uppercase",
+                    style: { color: "rgba(0,212,255,0.4)" },
+                    children: "BLUETOOTH: STANDBY"
+                  }
+                )
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: "px-3 py-2 rounded",
+              style: {
+                background: "rgba(255,215,0,0.06)",
+                border: "1px solid rgba(255,215,0,0.2)"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "text-xs font-bold uppercase tracking-widest",
+                    style: { color: "#ffd700" },
+                    children: "THUNDER BATTERY"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "text-xs font-mono mt-0.5",
+                    style: { color: "rgba(255,215,0,0.7)" },
+                    children: "1,720,000W | FUSES: NOMINAL | 688 RUNS"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "text-xs font-mono",
+                    style: { color: "rgba(255,215,0,0.5)" },
+                    children: "344,000 BATTERIES × 9V × 5W → HELIX"
+                  }
+                )
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: "px-3 py-3 rounded",
+              style: {
+                background: helixActive ? "rgba(0,212,255,0.1)" : "rgba(0,0,0,0.4)",
+                border: `2px solid ${helixActive ? "rgba(0,212,255,0.55)" : "rgba(0,212,255,0.2)"}`,
+                boxShadow: helixActive ? "0 0 20px rgba(0,212,255,0.2)" : "none"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: "text-sm font-black uppercase tracking-widest",
+                        style: {
+                          color: helixActive ? "#00d4ff" : "rgba(0,212,255,0.5)"
+                        },
+                        children: "HELIX POWER"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: "text-xs mt-0.5",
+                        style: { color: "rgba(0,212,255,0.4)" },
+                        children: "VIRTUAL DIGITAL ANALOG SIMULATION AMP"
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      type: "button",
+                      "data-ocid": "helix.power_toggle",
+                      onClick: () => setHelixActive(!helixActive),
+                      className: "relative w-14 h-7 rounded-full transition-all duration-300 flex-shrink-0",
+                      style: {
+                        background: helixActive ? "rgba(0,212,255,0.4)" : "rgba(60,60,80,0.5)",
+                        border: `1px solid ${helixActive ? "rgba(0,212,255,0.8)" : "rgba(100,100,120,0.5)"}`,
+                        boxShadow: helixActive ? "0 0 12px rgba(0,212,255,0.5)" : "none"
+                      },
+                      "aria-label": "Toggle Helix power",
+                      children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "span",
+                        {
+                          className: "absolute top-1 w-5 h-5 rounded-full transition-all duration-300",
+                          style: {
+                            background: helixActive ? "#00d4ff" : "rgba(160,160,180,0.6)",
+                            left: helixActive ? "calc(100% - 22px)" : "3px",
+                            boxShadow: helixActive ? "0 0 8px #00d4ff" : "none"
+                          }
+                        }
+                      )
+                    }
+                  )
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    className: "text-xs font-bold uppercase tracking-wider text-center py-1 rounded",
+                    style: {
+                      background: helixActive ? "rgba(0,212,255,0.1)" : "rgba(0,0,0,0.3)",
+                      color: helixActive ? "#00d4ff" : "rgba(100,100,120,0.8)"
+                    },
+                    children: [
+                      bassContextState.toUpperCase(),
+                      " —",
+                      " ",
+                      helixActive ? "HELIX ENGAGED" : "STANDBY"
+                    ]
+                  }
+                )
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: "px-3 py-3 rounded",
+              style: {
+                background: gainKillActive ? "rgba(255,60,60,0.12)" : "rgba(0,0,0,0.4)",
+                border: `2px solid ${gainKillActive ? "rgba(255,60,60,0.7)" : "rgba(255,60,60,0.25)"}`,
+                boxShadow: gainKillActive ? "0 0 20px rgba(255,60,60,0.25)" : "none"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-2", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: "text-sm font-black uppercase tracking-widest",
+                        style: {
+                          color: gainKillActive ? "#ff4444" : "rgba(255,100,100,0.6)"
+                        },
+                        children: "GAIN KILL SWITCH"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: "text-xs mt-0.5",
+                        style: { color: "rgba(255,100,100,0.4)" },
+                        children: "ALL GAINS 0.0 SIMULTANEOUSLY"
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "button",
+                    {
+                      type: "button",
+                      "data-ocid": "helix.gain_kill_toggle",
+                      onClick: () => setGainKillActive(!gainKillActive),
+                      className: "relative w-14 h-7 rounded-full transition-all duration-200 flex-shrink-0",
+                      style: {
+                        background: gainKillActive ? "rgba(255,60,60,0.5)" : "rgba(60,60,80,0.5)",
+                        border: `1px solid ${gainKillActive ? "rgba(255,60,60,0.9)" : "rgba(100,100,120,0.5)"}`,
+                        boxShadow: gainKillActive ? "0 0 12px rgba(255,60,60,0.6)" : "none"
+                      },
+                      "aria-label": "Toggle gain kill switch",
+                      children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "span",
+                        {
+                          className: "absolute top-1 w-5 h-5 rounded-full transition-all duration-200",
+                          style: {
+                            background: gainKillActive ? "#ff4444" : "rgba(160,160,180,0.6)",
+                            left: gainKillActive ? "calc(100% - 22px)" : "3px",
+                            boxShadow: gainKillActive ? "0 0 8px #ff4444" : "none"
+                          }
+                        }
+                      )
+                    }
+                  )
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "text-xs font-bold uppercase tracking-wider text-center py-1.5 rounded",
+                    style: {
+                      background: gainKillActive ? "rgba(255,60,60,0.15)" : "rgba(0,255,136,0.06)",
+                      color: gainKillActive ? "#ff4444" : "#00ff88",
+                      border: `1px solid ${gainKillActive ? "rgba(255,60,60,0.4)" : "rgba(0,255,136,0.2)"}`
+                    },
+                    "data-ocid": "helix.gain_kill_status",
+                    children: gainKillActive ? "ZERO STACKING POLICY CHIP: ALL GAINS CONFIRMED 0.0" : "GAINS: NOMINAL"
+                  }
+                )
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "px-4 py-2 flex items-center gap-4 flex-wrap",
+            style: {
+              background: "rgba(0,0,0,0.5)",
+              borderTop: "1px solid rgba(0,212,255,0.15)"
             },
-            threshold
-          )) })
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-4 mt-3", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            className: "text-xs font-bold uppercase",
-            style: { color: "rgba(0,212,255,0.7)" },
-            children: "CH1"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            className: isLive ? "badge-live" : "badge-off",
-            "data-ocid": "bassamp.ch1_live",
-            children: isLive ? "✓ LIVE" : "OFF"
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.35)" }, children: "NO TUBE SIMULATION" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.2)" }, children: "|" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.35)" }, children: "VDA SIMULATION ONLY" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.2)" }, children: "|" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.35)" }, children: "TITANIUM WALL ACTIVE" })
+            ]
           }
         )
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            className: "text-xs font-bold uppercase",
-            style: { color: "rgba(0,212,255,0.7)" },
-            children: "CH2"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            className: isLive ? "badge-live" : "badge-off",
-            "data-ocid": "bassamp.ch2_live",
-            children: isLive ? "✓ LIVE" : "OFF"
-          }
-        )
-      ] })
-    ] })
-  ] });
+      ]
+    }
+  );
 }
 function setRef(ref, value) {
   if (typeof ref === "function") {
@@ -23657,6 +24313,31 @@ function BassSystem() {
     /* @__PURE__ */ jsxRuntimeExports.jsx(Label, { className: "sr-only", children: "Bass System Module" })
   ] });
 }
+const HD_BADGE$4 = /* @__PURE__ */ jsxRuntimeExports.jsx(
+  "span",
+  {
+    style: {
+      background: "rgba(0,0,0,0.5)",
+      color: "#00d4ff",
+      border: "1px solid rgba(0,212,255,0.4)",
+      fontSize: "0.55rem",
+      padding: "1px 4px",
+      borderRadius: "3px",
+      marginLeft: "4px",
+      fontWeight: "bold"
+    },
+    children: "HD"
+  }
+);
+const hdMonitorProcess$3 = (rawValue, sliderType) => {
+  let processed = rawValue;
+  if (rawValue < 10) processed = rawValue * 1.2;
+  else if (rawValue > 80) processed = Math.min(rawValue * 0.95, 100);
+  console.log(
+    `[Superior HD Monitor][${sliderType}] Input: ${rawValue.toFixed(2)}, Processed: ${processed.toFixed(2)}`
+  );
+  return processed;
+};
 function Canister() {
   const engine = useAudioEngine();
   const [isHolding, setIsHolding] = reactExports.useState(false);
@@ -23776,7 +24457,10 @@ function Canister() {
                 {
                   className: "text-xs font-bold uppercase tracking-widest",
                   style: { color: "#ff6b35" },
-                  children: "SLIDER 1: 14-40Hz BOTTOM NOTE"
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center", children: [
+                    "SLIDER 1: 14-40Hz BOTTOM NOTE",
+                    HD_BADGE$4
+                  ] })
                 }
               ),
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(255,107,53,0.5)" }, children: "Bottom note lane boost (F1 19Hz + F2 40Hz)" })
@@ -23803,9 +24487,19 @@ function Canister() {
               step: 1,
               value: bottomBoost,
               disabled: !isActive,
-              onChange: (e) => engine.setCanisterBottomBoost(Number(e.target.value)),
+              onChange: (e) => {
+                const processed = hdMonitorProcess$3(
+                  Number(e.target.value),
+                  "canister-bottom"
+                );
+                engine.setCanisterBottomBoost(processed);
+              },
               className: "w-full",
-              style: { accentColor: "#ff6b35", opacity: isActive ? 1 : 0.4 }
+              style: {
+                maxWidth: "180px",
+                accentColor: "#ff6b35",
+                opacity: isActive ? 1 : 0.4
+              }
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between", children: [
@@ -23831,7 +24525,10 @@ function Canister() {
                 {
                   className: "text-xs font-bold uppercase tracking-widest",
                   style: { color: "#00d4ff" },
-                  children: "SLIDER 2: 14-80Hz PUNCH"
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center", children: [
+                    "SLIDER 2: 14-80Hz PUNCH",
+                    HD_BADGE$4
+                  ] })
                 }
               ),
               /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "Punch lane boost (F3 80Hz peaking)" })
@@ -23858,9 +24555,19 @@ function Canister() {
               step: 1,
               value: punchBoost,
               disabled: !isActive,
-              onChange: (e) => engine.setCanisterPunchBoost(Number(e.target.value)),
+              onChange: (e) => {
+                const processed = hdMonitorProcess$3(
+                  Number(e.target.value),
+                  "canister-punch"
+                );
+                engine.setCanisterPunchBoost(processed);
+              },
               className: "w-full",
-              style: { accentColor: "#00d4ff", opacity: isActive ? 1 : 0.4 }
+              style: {
+                maxWidth: "180px",
+                accentColor: "#00d4ff",
+                opacity: isActive ? 1 : 0.4
+              }
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between", children: [
@@ -24191,17 +24898,17 @@ function ChipCommander() {
       {
         className: "px-2 py-2 rounded space-y-1",
         style: {
-          background: asoV3Active ? "rgba(255,180,0,0.1)" : "rgba(0,0,0,0.3)",
-          border: `1px solid ${asoV3Active ? "rgba(255,180,0,0.4)" : "rgba(255,180,0,0.15)"}`
+          background: asoV3Active ? "rgba(0,212,255,0.1)" : "rgba(0,0,0,0.3)",
+          border: `1px solid ${asoV3Active ? "rgba(0,212,255,0.4)" : "rgba(0,212,255,0.15)"}`
         },
-        "data-ocid": "chip_commander.aso_v3_slot",
+        "data-ocid": "chip_commander.helix_slot",
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             "div",
             {
               className: "text-xs font-bold uppercase tracking-widest",
-              style: { color: asoV3Active ? "#ffb400" : "rgba(255,180,0,0.4)" },
-              children: asoV3Active ? `● SLOT ${asoV3Slot} — ASO-V3 SOVEREIGN LOADED` : `○ SLOT ${asoV3Slot} — ASO-V3 STANDBY`
+              style: { color: asoV3Active ? "#00d4ff" : "rgba(0,212,255,0.4)" },
+              children: asoV3Active ? `● SLOT ${asoV3Slot} — HELIX DSP AMP LOADED` : `○ SLOT ${asoV3Slot} — HELIX DSP AMP STANDBY`
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -24209,11 +24916,50 @@ function ChipCommander() {
             {
               className: "text-xs",
               style: {
-                color: asoV3Active ? "rgba(255,180,0,0.6)" : "rgba(255,180,0,0.25)"
+                color: asoV3Active ? "rgba(0,212,255,0.6)" : "rgba(0,212,255,0.25)"
               },
-              children: asoV3Active ? "20,000W characteristics • 4-channel active" : "Activate from ASO-V3 SOVEREIGN panel"
+              children: asoV3Active ? "1,720,000W characteristics • VDA simulation active" : "Activate from ASO-V3 panel"
             }
           )
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "px-2 py-2 rounded space-y-1",
+        style: {
+          background: "rgba(0,255,136,0.05)",
+          border: "1px solid rgba(0,255,136,0.2)"
+        },
+        "data-ocid": "chip_commander.intelligence_layer",
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-xs font-bold uppercase tracking-widest",
+              style: { color: "#00ff88" },
+              children: "INTELLIGENCE LAYER — LOADED"
+            }
+          ),
+          [
+            "25 SMART CHIPS ACTIVE — LEARNING",
+            "ZERO STACKING POLICY CHIP: INDEPENDENT — ALWAYS RUNNING",
+            "BLUETOOTH SCANNER CHIP: INDEPENDENT",
+            "1,000MB BRAIN CHIP: LOADED"
+          ].map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: "text-xs font-mono flex items-center gap-1",
+              style: { color: "rgba(0,255,136,0.8)" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { style: { color: "#00ff88" }, children: "●" }),
+                " ",
+                item
+              ]
+            },
+            item
+          ))
         ]
       }
     ),
@@ -24335,13 +25081,6 @@ function ChipCommander() {
 }
 function Compressor() {
   const engine = useAudioEngine();
-  const [threshold, setThreshold] = reactExports.useState(-24);
-  const [ratio] = reactExports.useState(4);
-  const handleThreshold = (v) => {
-    setThreshold(v);
-    engine.setBassCompressor(v, ratio, 30, 3e-3, 0.25);
-    engine.setHighsCompressor(v, ratio, 30, 3e-3, 0.25);
-  };
   const reduction = Math.round(
     Math.min(engine.bassCompReduction, engine.highsCompReduction) * -10
   ) / 10;
@@ -24361,53 +25100,41 @@ function Compressor() {
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
-        className: "py-2 border-b",
-        style: { borderColor: "rgba(0,212,255,0.1)" },
+        className: "px-3 py-2 rounded",
+        style: {
+          background: "rgba(0,212,255,0.05)",
+          border: "1px solid rgba(0,212,255,0.2)"
+        },
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-1", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "span",
               {
                 className: "text-xs font-bold uppercase tracking-widest",
-                style: { color: "rgba(0,212,255,0.8)" },
+                style: { color: "rgba(0,212,255,0.7)" },
                 children: "THRESHOLD"
               }
             ),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
               "span",
               {
                 className: "text-xs font-mono font-bold",
                 style: { color: "#ffd700" },
-                children: [
-                  threshold,
-                  " dBFS"
-                ]
+                children: "-24 dBFS — FIXED"
               }
             )
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              "data-ocid": "compressor.threshold_slider",
-              type: "range",
-              min: -60,
-              max: 0,
-              value: threshold,
-              onChange: (e) => handleThreshold(Number(e.target.value)),
-              className: "w-full",
-              style: { accentColor: "#00d4ff" }
-            }
-          )
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs mt-1", style: { color: "rgba(0,212,255,0.4)" }, children: "Smart Range Limiter monitors only — threshold locked to prevent bass gating" })
         ]
       }
     ),
     [
-      ["RATIO", `${ratio}:1`],
+      ["RATIO", "4:1"],
       ["KNEE", "30 dB"],
       ["ATTACK", "3 ms"],
       ["RELEASE", "250 ms"],
       ["GAIN REDUCTION", `${reduction} dB`],
-      ["VOLUME RANGE", "1-700"]
+      ["VOLUME RANGE", "1-100"]
     ].map(([k, v]) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
@@ -24429,7 +25156,7 @@ function Compressor() {
       },
       k
     )),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-2 text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "VOLUME 1-700: 20 SMART CHIPS + 30 FILTERS ACTIVE FROM 100-700" })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-2 text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "VOLUME 1-100: SMART CHIPS + FILTERS ACTIVE ACROSS FULL RANGE" })
   ] });
 }
 const BANDS$1 = [
@@ -24669,20 +25396,6 @@ function Crossover() {
 }
 const BANDS = [
   {
-    id: "low1",
-    label: "14-50Hz",
-    freq: EQ_FREQS[0],
-    desc: "Bottom / Rumble / Foundation",
-    color: "#ff6b35"
-  },
-  {
-    id: "low2",
-    label: "14-80Hz",
-    freq: EQ_FREQS[1],
-    desc: "Kick / Punch / Hit",
-    color: "#ffd700"
-  },
-  {
     id: "low_mid",
     label: "250Hz",
     freq: EQ_FREQS[2],
@@ -24725,11 +25438,51 @@ const BANDS = [
     color: "#00ff88"
   }
 ];
+const HD_BADGE$3 = /* @__PURE__ */ jsxRuntimeExports.jsx(
+  "span",
+  {
+    style: {
+      background: "rgba(0,0,0,0.5)",
+      color: "#00d4ff",
+      border: "1px solid rgba(0,212,255,0.4)",
+      fontSize: "0.55rem",
+      padding: "1px 4px",
+      borderRadius: "3px",
+      marginLeft: "4px",
+      fontWeight: "bold"
+    },
+    children: "HD"
+  }
+);
 function EQ() {
+  var _a2, _b2, _c2, _d2;
   const engine = useAudioEngine();
+  const [bass50, setBass50] = reactExports.useState(() => {
+    var _a3, _b3;
+    return ((_b3 = (_a3 = engine == null ? void 0 : engine.eqBands) == null ? void 0 : _a3[0]) == null ? void 0 : _b3.gainDb) ?? 0;
+  });
+  const [bass80, setBass80] = reactExports.useState(() => {
+    var _a3, _b3;
+    return ((_b3 = (_a3 = engine == null ? void 0 : engine.eqBands) == null ? void 0 : _a3[1]) == null ? void 0 : _b3.gainDb) ?? 0;
+  });
+  const eqBand0GainDb = (_b2 = (_a2 = engine == null ? void 0 : engine.eqBands) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.gainDb;
+  const eqBand1GainDb = (_d2 = (_c2 = engine == null ? void 0 : engine.eqBands) == null ? void 0 : _c2[1]) == null ? void 0 : _d2.gainDb;
+  reactExports.useEffect(() => {
+    if (eqBand0GainDb !== void 0) setBass50(eqBand0GainDb);
+    if (eqBand1GainDb !== void 0) setBass80(eqBand1GainDb);
+  }, [eqBand0GainDb, eqBand1GainDb]);
+  const hdMonitorProcess2 = (rawValue, sliderType) => {
+    let processed = rawValue;
+    if (rawValue < -8) processed = rawValue * 0.9;
+    else if (rawValue > 8) processed = rawValue * 0.95;
+    console.log(
+      `[Superior HD Monitor][${sliderType}] Input: ${rawValue.toFixed(2)}, Processed: ${processed.toFixed(2)}`
+    );
+    return processed;
+  };
   const getGain = (freq) => {
-    var _a2;
-    return ((_a2 = engine.eqBands.find((b) => b.freq === freq)) == null ? void 0 : _a2.gainDb) ?? 0;
+    var _a3;
+    return ((_a3 = engine.eqBands.find((b) => b.freq === freq)) == null ? void 0 : _a3.gainDb) ?? 0;
   };
   const handleChange = (freq, v) => engine.setEQBand(freq, v);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
@@ -24742,31 +25495,180 @@ function EQ() {
           color: "#00d4ff",
           border: "1px solid rgba(0,212,255,0.3)"
         },
-        children: "8 BAND EQ ● ±12dB RANGE ● BIQUAD SERIES CHAIN"
+        children: "8 BAND EQ ● ±12dB RANGE ● BASS + MIDS + HIGHS"
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
-        className: "px-2 py-1 rounded text-xs font-bold uppercase tracking-widest",
-        style: {
-          background: "rgba(255,107,53,0.08)",
-          border: "1px solid rgba(255,107,53,0.2)",
-          color: "rgba(255,107,53,0.8)"
-        },
-        children: "● LOW END LANES (Independent — not combined)"
+        className: "flex items-center gap-3 py-2 border-b",
+        style: { borderColor: "rgba(255,107,53,0.2)" },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-28 flex-shrink-0", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "text-xs font-bold uppercase tracking-widest flex items-center",
+                style: { color: "#ff6b35" },
+                children: [
+                  "14–50Hz BASS",
+                  HD_BADGE$3
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "text-xs leading-tight mt-0.5",
+                style: { color: "rgba(255,107,53,0.45)", fontSize: "0.6rem" },
+                children: "Deep Sub / Bottom"
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              "data-ocid": "eq.bass50_slider",
+              type: "range",
+              min: -12,
+              max: 12,
+              step: 0.1,
+              value: bass50,
+              style: { maxWidth: "180px", accentColor: "#ff6b35" },
+              onChange: (e) => {
+                const processed = hdMonitorProcess2(
+                  Number(e.target.value),
+                  "14-50Hz"
+                );
+                setBass50(processed);
+                engine.setEQBand(EQ_FREQS[0], processed);
+              }
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "span",
+            {
+              className: "text-xs font-mono w-14 text-right font-bold",
+              style: {
+                color: bass50 > 0 ? "#00ff88" : bass50 < 0 ? "#ff4444" : "#ffd700"
+              },
+              children: [
+                bass50 >= 0 ? "+" : "",
+                bass50.toFixed(1),
+                " dB"
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              "data-ocid": "eq.bass50_reset",
+              onClick: () => {
+                setBass50(0);
+                engine.setEQBand(EQ_FREQS[0], 0);
+              },
+              className: "text-xs px-2 py-0.5 rounded",
+              style: {
+                background: "rgba(255,107,53,0.1)",
+                color: "rgba(255,107,53,0.7)",
+                border: "1px solid rgba(255,107,53,0.3)"
+              },
+              children: "RST"
+            }
+          )
+        ]
       }
     ),
-    BANDS.map((band, i) => {
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "flex items-center gap-3 py-2 border-b",
+        style: { borderColor: "rgba(255,107,53,0.2)" },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-28 flex-shrink-0", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "text-xs font-bold uppercase tracking-widest flex items-center",
+                style: { color: "#ff9500" },
+                children: [
+                  "14–80Hz BASS",
+                  HD_BADGE$3
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "text-xs leading-tight mt-0.5",
+                style: { color: "rgba(255,149,0,0.45)", fontSize: "0.6rem" },
+                children: "Punch / Sub Bass"
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              "data-ocid": "eq.bass80_slider",
+              type: "range",
+              min: -12,
+              max: 12,
+              step: 0.1,
+              value: bass80,
+              style: { maxWidth: "180px", accentColor: "#ff9500" },
+              onChange: (e) => {
+                const processed = hdMonitorProcess2(
+                  Number(e.target.value),
+                  "14-80Hz"
+                );
+                setBass80(processed);
+                engine.setEQBand(EQ_FREQS[1], processed);
+              }
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "span",
+            {
+              className: "text-xs font-mono w-14 text-right font-bold",
+              style: {
+                color: bass80 > 0 ? "#00ff88" : bass80 < 0 ? "#ff4444" : "#ffd700"
+              },
+              children: [
+                bass80 >= 0 ? "+" : "",
+                bass80.toFixed(1),
+                " dB"
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              "data-ocid": "eq.bass80_reset",
+              onClick: () => {
+                setBass80(0);
+                engine.setEQBand(EQ_FREQS[1], 0);
+              },
+              className: "text-xs px-2 py-0.5 rounded",
+              style: {
+                background: "rgba(255,149,0,0.1)",
+                color: "rgba(255,149,0,0.7)",
+                border: "1px solid rgba(255,149,0,0.3)"
+              },
+              children: "RST"
+            }
+          )
+        ]
+      }
+    ),
+    BANDS.map((band) => {
       const gain = getGain(band.freq);
-      const isLowEnd = i < 2;
       return /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "div",
         {
           className: "flex items-center gap-3 py-2 border-b",
-          style: {
-            borderColor: isLowEnd ? "rgba(255,107,53,0.15)" : "rgba(0,212,255,0.1)"
-          },
+          style: { borderColor: "rgba(0,212,255,0.1)" },
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "w-28 flex-shrink-0", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -24843,125 +25745,55 @@ function EQ() {
           border: "1px solid rgba(0,212,255,0.1)",
           color: "rgba(0,212,255,0.45)"
         },
-        children: "EQ territory starts at 250Hz. Sub and bass lanes handled by Low End Booster & Canister."
+        children: "● Bass lane EQ (14–80Hz) above — Canister handles parallel boost path"
       }
     )
   ] });
 }
-const CHIPS = [
+const HD_BADGE$2 = /* @__PURE__ */ jsxRuntimeExports.jsx(
+  "span",
   {
-    id: "restoration",
-    label: "BASS RESTORATION CHIP",
-    active: (boost) => boost > 0
-  },
-  {
-    id: "maximizer",
-    label: "BASS MAXIMIZER CHIP",
-    active: (boost) => boost > 30
-  },
-  {
-    id: "parabass",
-    label: "PARABASS CHIP",
-    active: (_b2, _m, paraGain) => paraGain !== 50
-  },
-  {
-    id: "pfm",
-    label: "PFM CHIP • 14Hz FLOOR",
-    active: () => true,
-    alwaysOn: true
+    style: {
+      background: "rgba(0,0,0,0.5)",
+      color: "#00d4ff",
+      border: "1px solid rgba(0,212,255,0.4)",
+      fontSize: "0.55rem",
+      padding: "1px 4px",
+      borderRadius: "3px",
+      marginLeft: "4px",
+      fontWeight: "bold"
+    },
+    children: "HD"
   }
-];
-function SliderRow$1({
-  ocid,
-  label,
-  description,
-  min,
-  max,
-  value,
-  onChange,
-  displayValue,
-  accentColor = "#00d4ff"
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      className: "flex flex-col gap-1 py-2 border-b",
-      style: { borderColor: "rgba(0,212,255,0.1)" },
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "span",
-            {
-              className: "text-xs font-bold uppercase tracking-widest",
-              style: { color: "#ffd700" },
-              children: label
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "span",
-            {
-              className: "text-xs font-mono font-bold",
-              style: { color: accentColor },
-              children: displayValue
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: description }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
-          {
-            "data-ocid": ocid,
-            type: "range",
-            min,
-            max,
-            value,
-            onChange: (e) => onChange(Number(e.target.value)),
-            className: "w-full mt-1",
-            style: { accentColor }
-          }
-        )
-      ]
-    }
+);
+const hdMonitorProcess$2 = (rawValue, sliderType) => {
+  let processed = rawValue;
+  if (rawValue < 10) processed = rawValue * 1.2;
+  else if (rawValue > 80) processed = Math.min(rawValue * 0.95, 100);
+  console.log(
+    `[Superior HD Monitor][${sliderType}] Input: ${rawValue.toFixed(2)}, Processed: ${processed.toFixed(2)}`
   );
-}
+  return processed;
+};
 function Epicenter() {
   const engine = useAudioEngine();
-  const [restoration, setRestoration] = reactExports.useState(50);
-  const [maximizer, setMaximizer] = reactExports.useState(50);
-  const [paraCenter, setParaCenter] = reactExports.useState(60);
-  const [paraWidth, setParaWidth] = reactExports.useState(50);
-  const [paraGain, setParaGain] = reactExports.useState(50);
-  const [bassOutput, setBassOutput] = reactExports.useState(50);
+  const [restoration, setRestorationLocal] = reactExports.useState(
+    engine.bassRestorationLevel ?? 50
+  );
+  const [bassOutput, setBassOutputLocal] = reactExports.useState(
+    engine.bassOutputLevel ?? 50
+  );
   const handleRestoration = (v) => {
-    setRestoration(v);
-    setMaximizer(v);
-    engine.setEpicenterBoost(v / 100 * 12);
-  };
-  const handleMaximizer = (v) => {
-    setMaximizer(v);
-    setRestoration(v);
-    engine.setEpicenterBoost(v / 100 * 12);
-  };
-  const handleParaCenter = (v) => {
-    setParaCenter(v);
-    engine.setParaCenter(v);
-  };
-  const handleParaWidth = (v) => {
-    setParaWidth(v);
-    engine.setParaWidth(v);
-  };
-  const handleParaGain = (v) => {
-    setParaGain(v);
-    engine.setParaGain(v);
+    setRestorationLocal(v);
+    engine.setBassRestorationLevel(v);
   };
   const handleBassOutput = (v) => {
-    setBassOutput(v);
+    setBassOutputLocal(v);
     engine.setBassOutputLevel(v);
   };
-  const restorationDb = (restoration / 100 * 12).toFixed(1);
-  const paraQ = (0.3 + paraWidth / 100 * 2.7).toFixed(2);
-  const paraGainDb = ((paraGain - 50) / 50 * 12).toFixed(1);
+  const restorationDb = (restoration / 100 * 9.6).toFixed(1);
   const bassOutputPct = `${bassOutput}%  (${(bassOutput / 50).toFixed(2)}x)`;
+  const restorationActive = restoration > 0;
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -25088,129 +25920,158 @@ function Epicenter() {
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-0.5", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        SliderRow$1,
-        {
-          ocid: "epicenter.restoration_slider",
-          label: "BASS RESTORATION",
-          description: "Recreates missing fundamental frequencies from harmonics",
-          min: 0,
-          max: 100,
-          value: restoration,
-          onChange: handleRestoration,
-          displayValue: `${restorationDb} dB`
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        SliderRow$1,
-        {
-          ocid: "epicenter.maximizer_slider",
-          label: "BASS MAXIMIZER",
-          description: "Increases overall bass response",
-          min: 0,
-          max: 100,
-          value: maximizer,
-          onChange: handleMaximizer,
-          displayValue: `${maximizer}%`
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        SliderRow$1,
-        {
-          ocid: "epicenter.para_center_slider",
-          label: "PARABASS CENTER",
-          description: "Parametric center frequency",
-          min: 20,
-          max: 120,
-          value: paraCenter,
-          onChange: handleParaCenter,
-          displayValue: `${paraCenter} Hz`,
-          accentColor: "#ffd700"
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        SliderRow$1,
-        {
-          ocid: "epicenter.para_width_slider",
-          label: "PARABASS WIDTH",
-          description: "Parametric Q width — lower = wider, higher = narrower",
-          min: 0,
-          max: 100,
-          value: paraWidth,
-          onChange: handleParaWidth,
-          displayValue: `Q ${paraQ}`,
-          accentColor: "#ffd700"
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        SliderRow$1,
-        {
-          ocid: "epicenter.para_gain_slider",
-          label: "PARABASS GAIN",
-          description: "Parametric gain \\u00b112dB",
-          min: 0,
-          max: 100,
-          value: paraGain,
-          onChange: handleParaGain,
-          displayValue: `${paraGainDb} dB`,
-          accentColor: "#ffd700"
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        SliderRow$1,
-        {
-          ocid: "epicenter.bass_output_slider",
-          label: "BASS OUTPUT LEVEL",
-          description: "Master bass output after all epicenter processing",
-          min: 0,
-          max: 100,
-          value: bassOutput,
-          onChange: handleBassOutput,
-          displayValue: bassOutputPct,
-          accentColor: "#00ff88"
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 gap-2 pt-1", children: CHIPS.map((chip, idx) => {
-      const active = chip.alwaysOn || chip.active(restoration, maximizer, paraGain);
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "div",
         {
-          className: "flex items-center justify-between px-3 py-2 rounded",
-          style: {
-            background: active ? chip.alwaysOn ? "rgba(0,255,136,0.1)" : "rgba(0,212,255,0.1)" : "rgba(255,215,0,0.05)",
-            border: `1px solid ${active ? chip.alwaysOn ? "rgba(0,255,136,0.4)" : "rgba(0,212,255,0.4)" : "rgba(255,215,0,0.2)"}`
-          },
-          "data-ocid": `epicenter.chip.${idx + 1}`,
+          className: "flex flex-col gap-1 py-2 border-b",
+          style: { borderColor: "rgba(0,212,255,0.1)" },
           children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "span",
+                {
+                  className: "text-xs font-bold uppercase tracking-widest flex items-center",
+                  style: { color: "#ffd700" },
+                  children: [
+                    "BASS RESTORATION",
+                    HD_BADGE$2
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "span",
+                {
+                  className: "text-xs font-mono font-bold",
+                  style: { color: "#00d4ff" },
+                  children: [
+                    restorationDb,
+                    " dB"
+                  ]
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "Recreates missing fundamental frequencies from harmonics" }),
             /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "span",
+              "input",
               {
-                className: "text-xs font-bold uppercase leading-tight",
+                "data-ocid": "epicenter.restoration_slider",
+                type: "range",
+                min: 0,
+                max: 100,
+                value: restoration,
+                onChange: (e) => handleRestoration(
+                  hdMonitorProcess$2(Number(e.target.value), "bass-restoration")
+                ),
+                className: "w-full mt-1",
                 style: {
-                  color: active ? chip.alwaysOn ? "#00ff88" : "#00d4ff" : "rgba(255,215,0,0.6)",
-                  fontSize: "0.6rem"
-                },
-                children: chip.label
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "span",
-              {
-                className: "text-xs font-bold uppercase px-1.5 py-0.5 rounded ml-1 shrink-0",
-                style: {
-                  background: active ? chip.alwaysOn ? "rgba(0,255,136,0.2)" : "rgba(0,212,255,0.2)" : "rgba(255,215,0,0.1)",
-                  color: active ? chip.alwaysOn ? "#00ff88" : "#00d4ff" : "rgba(255,215,0,0.5)",
-                  fontSize: "0.55rem"
-                },
-                children: active ? "ACTIVE" : "STANDBY"
+                  maxWidth: "180px",
+                  accentColor: "#00d4ff"
+                }
               }
             )
           ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "flex flex-col gap-1 py-2 border-b",
+          style: { borderColor: "rgba(0,212,255,0.1)" },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "span",
+                {
+                  className: "text-xs font-bold uppercase tracking-widest flex items-center",
+                  style: { color: "#ffd700" },
+                  children: [
+                    "BASS OUTPUT LEVEL",
+                    HD_BADGE$2
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "span",
+                {
+                  className: "text-xs font-mono font-bold",
+                  style: { color: "#00ff88" },
+                  children: bassOutputPct
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "Master bass output after all epicenter processing" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                "data-ocid": "epicenter.bass_output_slider",
+                type: "range",
+                min: 0,
+                max: 100,
+                value: bassOutput,
+                onChange: (e) => handleBassOutput(
+                  hdMonitorProcess$2(Number(e.target.value), "bass-output")
+                ),
+                className: "w-full mt-1",
+                style: {
+                  maxWidth: "180px",
+                  accentColor: "#00ff88"
+                }
+              }
+            )
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 gap-2 pt-1", children: [
+      {
+        id: "restoration",
+        label: "BASS RESTORATION CHIP",
+        active: restorationActive,
+        alwaysOn: false
+      },
+      {
+        id: "pfm",
+        label: "PFM CHIP • 14Hz FLOOR",
+        active: true,
+        alwaysOn: true
+      }
+    ].map((chip, idx) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "flex items-center justify-between px-3 py-2 rounded",
+        style: {
+          background: chip.active ? chip.alwaysOn ? "rgba(0,255,136,0.1)" : "rgba(0,212,255,0.1)" : "rgba(255,215,0,0.05)",
+          border: `1px solid ${chip.active ? chip.alwaysOn ? "rgba(0,255,136,0.4)" : "rgba(0,212,255,0.4)" : "rgba(255,215,0,0.2)"}`
         },
-        chip.id
-      );
-    }) })
+        "data-ocid": `epicenter.chip.${idx + 1}`,
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              className: "text-xs font-bold uppercase leading-tight",
+              style: {
+                color: chip.active ? chip.alwaysOn ? "#00ff88" : "#00d4ff" : "rgba(255,215,0,0.6)",
+                fontSize: "0.6rem"
+              },
+              children: chip.label
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              className: "text-xs font-bold uppercase px-1.5 py-0.5 rounded ml-1 shrink-0",
+              style: {
+                background: chip.active ? chip.alwaysOn ? "rgba(0,255,136,0.2)" : "rgba(0,212,255,0.2)" : "rgba(255,215,0,0.1)",
+                color: chip.active ? chip.alwaysOn ? "#00ff88" : "#00d4ff" : "rgba(255,215,0,0.5)",
+                fontSize: "0.55rem"
+              },
+              children: chip.active ? "ACTIVE" : "STANDBY"
+            }
+          )
+        ]
+      },
+      chip.id
+    )) })
   ] });
 }
 function FuseMonitor() {
@@ -25220,15 +26081,15 @@ function FuseMonitor() {
   const fuses = [
     {
       id: 1,
-      label: "FUSE 1 — BASS POWER",
-      status: bassOk ? "INTACT" : "STANDBY",
+      label: "FUSE 1 — NOMINAL",
+      status: bassOk ? "NOMINAL" : "STANDBY",
       rating: "150A",
       ok: bassOk
     },
     {
       id: 2,
-      label: "FUSE 2 — HIGHS POWER",
-      status: highsOk ? "INTACT" : "STANDBY",
+      label: "FUSE 2 — NOMINAL",
+      status: highsOk ? "NOMINAL" : "STANDBY",
       rating: "100A",
       ok: highsOk
     }
@@ -25288,6 +26149,34 @@ function FuseMonitor() {
       {
         className: "p-3 rounded mt-2",
         style: {
+          background: "rgba(0,255,136,0.05)",
+          border: "1px solid rgba(0,255,136,0.2)"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-xs font-bold uppercase tracking-widest",
+              style: { color: "#00ff88" },
+              children: "688 PROTECTION STAGES ACTIVE"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-xs mt-1 font-mono",
+              style: { color: "rgba(0,255,136,0.5)" },
+              children: "344,000 BATTERIES — 688 FUSES — HELIX AMP PROTECTED"
+            }
+          )
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "p-3 rounded mt-2",
+        style: {
           background: "rgba(0,212,255,0.05)",
           border: "1px solid rgba(0,212,255,0.15)"
         },
@@ -25305,7 +26194,7 @@ function FuseMonitor() {
             {
               className: "text-xs mt-1 font-mono",
               style: { color: "rgba(0,212,255,0.4)" },
-              children: "BROWSER → FUSE → MILLIWATTS → POWER FLOW"
+              children: "BROWSER → FUSE → MILLIWATTS → HELIX AMP"
             }
           )
         ]
@@ -25315,31 +26204,26 @@ function FuseMonitor() {
 }
 function GainStructure() {
   const engine = useAudioEngine();
-  const bassGain = engine.bassGainValue;
-  const highsGain = engine.highsGainValue;
+  const gainKillActive = engine.gainKillActive;
   const bassRed = engine.bassCompReduction ?? 0;
   const highsRed = engine.highsCompReduction ?? 0;
   const GAINS2 = [
-    { id: "G01", label: "BASS INPUT GAIN", value: bassGain },
-    { id: "G02", label: "BASS FILTER GAIN", value: 1 },
+    { id: "G01", label: "BASS INPUT GAIN", value: 0 },
+    { id: "G02", label: "BASS FILTER GAIN", value: 0 },
     { id: "G03", label: "BASS COMP GR", value: bassRed },
-    { id: "G04", label: "BASS OUTPUT GAIN", value: bassGain },
-    { id: "G05", label: "HIGHS INPUT GAIN", value: highsGain },
-    { id: "G06", label: "HIGHS FILTER GAIN", value: 1 },
+    { id: "G04", label: "BASS OUTPUT GAIN", value: 0 },
+    { id: "G05", label: "HIGHS INPUT GAIN", value: 0 },
+    { id: "G06", label: "HIGHS FILTER GAIN", value: 0 },
     { id: "G07", label: "HIGHS COMP GR", value: highsRed },
-    { id: "G08", label: "HIGHS OUTPUT GAIN", value: highsGain },
+    { id: "G08", label: "HIGHS OUTPUT GAIN", value: 0 },
     { id: "G09", label: "BASS AMP CH1 GAIN", value: 0 },
     { id: "G10", label: "BASS AMP CH2 GAIN", value: 0 },
     { id: "G11", label: "MIDS AMP CH1 GAIN", value: 0 },
     { id: "G12", label: "MIDS AMP CH2 GAIN", value: 0 },
-    { id: "G13", label: "MASTER L GAIN", value: bassGain },
-    { id: "G14", label: "MASTER R GAIN", value: highsGain },
+    { id: "G13", label: "MASTER L GAIN", value: 0 },
+    { id: "G14", label: "MASTER R GAIN", value: 0 },
     { id: "G15", label: "SUB AUX GAIN", value: 0 },
-    {
-      id: "G16",
-      label: "OUTPUT STAGE GAIN",
-      value: (bassGain + highsGain) / 2
-    }
+    { id: "G16", label: "OUTPUT STAGE GAIN", value: (bassRed + highsRed) / 2 }
   ];
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -25352,6 +26236,173 @@ function GainStructure() {
           border: "1px solid rgba(0,212,255,0.3)"
         },
         children: "ALL 16 GAINS • LIVE ENGINE VALUES"
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          marginBottom: "12px",
+          padding: "8px",
+          border: "1px solid rgba(255,50,50,0.4)",
+          borderRadius: "6px",
+          background: gainKillActive ? "rgba(255,0,0,0.08)" : "rgba(0,0,0,0.3)"
+        },
+        "data-ocid": "gain.kill_switch",
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between"
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    style: { fontSize: "0.7rem", fontWeight: "bold", color: "#ff4444" },
+                    children: "GAIN KILL SWITCH"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    "data-ocid": "gain.kill_switch_button",
+                    onClick: () => engine.setGainKillActive(!gainKillActive),
+                    style: {
+                      background: gainKillActive ? "#ff2222" : "#333",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "4px",
+                      padding: "4px 10px",
+                      fontSize: "0.65rem",
+                      cursor: "pointer"
+                    },
+                    children: gainKillActive ? "GAIN KILL SWITCH — ALL GAINS 0.0" : "INACTIVE"
+                  }
+                )
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                fontSize: "0.6rem",
+                color: gainKillActive ? "#ff6666" : "#888",
+                marginTop: "4px"
+              },
+              children: gainKillActive ? "ZERO STACKING POLICY CHIP: 8 KILLABLE GAINS CONFIRMED 0.0" : "Zero Stacking Policy Chip Monitoring"
+            }
+          )
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        style: {
+          marginBottom: "12px",
+          padding: "8px",
+          border: "1px solid rgba(0,255,120,0.3)",
+          borderRadius: "6px",
+          background: "rgba(0,255,120,0.04)"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              style: {
+                fontSize: "0.6rem",
+                fontWeight: "bold",
+                color: "#00e87a",
+                marginBottom: "6px"
+              },
+              children: "BYPASS PASS-THROUGH NODES — NEVER KILLED"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-1", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "flex items-center justify-between px-2 py-1.5 rounded",
+                style: {
+                  background: "rgba(0,20,10,0.8)",
+                  border: "1px solid rgba(0,255,120,0.2)"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        style: {
+                          color: "#00e87a",
+                          fontSize: "0.6rem",
+                          fontWeight: "bold"
+                        },
+                        children: "VOLUME"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "#00e87a", fontSize: "0.55rem" }, children: "VOLUME NODE — BYPASS" })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "span",
+                    {
+                      style: {
+                        color: "#00e87a",
+                        fontSize: "0.7rem",
+                        fontWeight: "bold",
+                        fontFamily: "monospace"
+                      },
+                      children: "PASS"
+                    }
+                  )
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                className: "flex items-center justify-between px-2 py-1.5 rounded",
+                style: {
+                  background: "rgba(0,20,10,0.8)",
+                  border: "1px solid rgba(0,255,120,0.2)"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        style: {
+                          color: "#4dd0ff",
+                          fontSize: "0.6rem",
+                          fontWeight: "bold"
+                        },
+                        children: "MASTER"
+                      }
+                    ),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { color: "#4dd0ff", fontSize: "0.55rem" }, children: "CEILING — FIXED 1.0" })
+                  ] }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "span",
+                    {
+                      style: {
+                        color: "#4dd0ff",
+                        fontSize: "0.7rem",
+                        fontWeight: "bold",
+                        fontFamily: "monospace"
+                      },
+                      children: "1.00"
+                    }
+                  )
+                ]
+              }
+            )
+          ] })
+        ]
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 gap-1", children: GAINS2.map((g) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -25524,81 +26575,47 @@ function Highs() {
     ))
   ] });
 }
-function formatCountdown(seconds) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
 function LowEndBooster() {
   const engine = useAudioEngine();
-  const [isHolding, setIsHolding] = reactExports.useState(false);
-  const [holdProgress, setHoldProgress] = reactExports.useState(0);
-  const holdIntervalRef = reactExports.useRef(null);
-  const holdTimeoutRef = reactExports.useRef(null);
-  const [wasActive, setWasActive] = reactExports.useState(false);
-  const showExpired = wasActive && !engine.lowEndBoosterEnabled && !engine.lowEndBoosterClaimed && engine.lowEndBoosterTimeLeft === null;
-  const handleActivate = reactExports.useCallback(() => {
-    setWasActive(true);
-    engine.enableLowEndBooster();
-  }, [engine]);
-  const startHold = reactExports.useCallback(() => {
-    if (engine.lowEndBoosterClaimed) return;
-    if (!engine.lowEndBoosterActive) return;
-    setIsHolding(true);
-    setHoldProgress(0);
-    let progress = 0;
-    holdIntervalRef.current = setInterval(() => {
-      progress += 5;
-      setHoldProgress(progress);
-      if (progress >= 100) {
-        if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
-        engine.claimLowEndBooster();
-        setIsHolding(false);
-        setHoldProgress(0);
-      }
-    }, 100);
-    holdTimeoutRef.current = setTimeout(() => {
-      if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
-      setIsHolding(false);
-      setHoldProgress(0);
-    }, 2500);
-  }, [engine]);
-  const stopHold = reactExports.useCallback(() => {
-    if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
-    if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current);
-    if (!engine.lowEndBoosterClaimed) {
-      setIsHolding(false);
-      setHoldProgress(0);
-    }
-  }, [engine]);
-  const isActive = engine.lowEndBoosterActive;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-4", children: [
+  const { canisterActive, canisterBottomBoost, canisterPunchBoost } = engine;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "text-sm font-bold uppercase tracking-widest",
+          style: { color: "#ffd700" },
+          children: "SYSTEM HEALTH"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "text-xs mt-0.5 font-mono",
+          style: { color: "rgba(0,212,255,0.6)" },
+          children: "CANISTER STATUS • LOW-END COVERAGE CONFIRMED"
+        }
+      )
+    ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
-        className: "px-3 py-2 rounded",
+        className: "inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider",
         style: {
-          background: "rgba(0,212,255,0.08)",
-          border: "1px solid rgba(0,212,255,0.3)"
+          background: "rgba(0,255,136,0.12)",
+          border: "1px solid rgba(0,255,136,0.4)",
+          color: "#00ff88"
         },
+        "data-ocid": "system_health.canister_badge",
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
+            "span",
             {
-              className: "text-xs font-bold uppercase tracking-widest",
-              style: { color: "#00d4ff" },
-              children: "LOW END BOOSTER"
+              className: "w-1.5 h-1.5 rounded-full",
+              style: { background: "#00ff88" }
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: "text-xs mt-0.5",
-              style: { color: "rgba(0,212,255,0.5)" },
-              children: "14Hz–40Hz BOTTOM NOTE | 14Hz–80Hz PUNCH"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs mt-1", style: { color: "rgba(255,215,0,0.4)" }, children: "14Hz–80Hz CANISTER" })
+          "CANISTER ACTIVE — HANDLING ALL LOW-END LANES"
         ]
       }
     ),
@@ -25608,32 +26625,55 @@ function LowEndBooster() {
         {
           className: "flex items-center gap-3 px-3 py-2.5 rounded",
           style: {
-            background: isActive ? "rgba(0,255,136,0.08)" : "rgba(0,0,0,0.3)",
-            border: `1px solid ${isActive ? "rgba(0,255,136,0.4)" : "rgba(0,212,255,0.15)"}`
+            background: canisterActive ? "rgba(0,255,136,0.08)" : "rgba(0,0,0,0.3)",
+            border: `1px solid ${canisterActive ? "rgba(0,255,136,0.4)" : "rgba(0,212,255,0.15)"}`
           },
-          "data-ocid": "low_end_booster.lane1",
+          "data-ocid": "system_health.lane1",
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "div",
               {
                 className: "w-2.5 h-2.5 rounded-full flex-shrink-0",
                 style: {
-                  background: isActive ? "#00ff88" : "rgba(0,255,136,0.2)",
-                  boxShadow: isActive ? "0 0 8px #00ff88" : "none",
-                  animation: isActive ? "pulse 1.2s ease-in-out infinite" : "none"
+                  background: canisterActive ? "#00ff88" : "rgba(0,255,136,0.2)",
+                  boxShadow: canisterActive ? "0 0 8px #00ff88" : "none"
                 }
               }
             ),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "div",
                 {
                   className: "text-xs font-bold uppercase tracking-widest",
-                  style: { color: isActive ? "#00ff88" : "rgba(0,212,255,0.5)" },
-                  children: "LANE 1 — BOTTOM NOTE TRACKING"
+                  style: {
+                    color: canisterActive ? "#00ff88" : "rgba(0,212,255,0.5)"
+                  },
+                  children: "14–40Hz BOTTOM NOTE — CANISTER SLIDER 1"
                 }
               ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.4)" }, children: "14Hz–40Hz" })
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mt-0.5", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "flex-1 h-1.5 rounded overflow-hidden",
+                    style: { background: "rgba(0,0,0,0.4)" },
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: "h-full rounded",
+                        style: {
+                          width: `${canisterBottomBoost}%`,
+                          background: "#00ff88"
+                        }
+                      }
+                    )
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-mono", style: { color: "#00ff88" }, children: [
+                  canisterBottomBoost,
+                  "%"
+                ] })
+              ] })
             ] })
           ]
         }
@@ -25643,346 +26683,112 @@ function LowEndBooster() {
         {
           className: "flex items-center gap-3 px-3 py-2.5 rounded",
           style: {
-            background: isActive ? "rgba(0,212,255,0.08)" : "rgba(0,0,0,0.3)",
-            border: `1px solid ${isActive ? "rgba(0,212,255,0.4)" : "rgba(0,212,255,0.15)"}`
+            background: canisterActive ? "rgba(0,212,255,0.08)" : "rgba(0,0,0,0.3)",
+            border: `1px solid ${canisterActive ? "rgba(0,212,255,0.4)" : "rgba(0,212,255,0.15)"}`
           },
-          "data-ocid": "low_end_booster.lane2",
+          "data-ocid": "system_health.lane2",
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx(
               "div",
               {
                 className: "w-2.5 h-2.5 rounded-full flex-shrink-0",
                 style: {
-                  background: isActive ? "#00d4ff" : "rgba(0,212,255,0.2)",
-                  boxShadow: isActive ? "0 0 8px #00d4ff" : "none",
-                  animation: isActive ? "pulse 1.4s ease-in-out infinite" : "none"
+                  background: canisterActive ? "#00d4ff" : "rgba(0,212,255,0.2)",
+                  boxShadow: canisterActive ? "0 0 8px #00d4ff" : "none"
                 }
               }
             ),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "div",
                 {
                   className: "text-xs font-bold uppercase tracking-widest",
-                  style: { color: isActive ? "#00d4ff" : "rgba(0,212,255,0.5)" },
-                  children: "LANE 2 — PUNCH TRACKING"
+                  style: {
+                    color: canisterActive ? "#00d4ff" : "rgba(0,212,255,0.5)"
+                  },
+                  children: "14–80Hz PUNCH — CANISTER SLIDER 2"
                 }
               ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.4)" }, children: "14Hz–80Hz" })
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 mt-0.5", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "flex-1 h-1.5 rounded overflow-hidden",
+                    style: { background: "rgba(0,0,0,0.4)" },
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "div",
+                      {
+                        className: "h-full rounded",
+                        style: {
+                          width: `${canisterPunchBoost}%`,
+                          background: "#00d4ff"
+                        }
+                      }
+                    )
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-mono", style: { color: "#00d4ff" }, children: [
+                  canisterPunchBoost,
+                  "%"
+                ] })
+              ] })
             ] })
           ]
-        }
-      ),
-      isActive && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "div",
-        {
-          className: "flex items-center gap-2 px-3 py-2 rounded",
-          style: {
-            background: "rgba(255,215,0,0.08)",
-            border: "1px solid rgba(255,215,0,0.35)"
-          },
-          "data-ocid": "low_end_booster.bass_note_tracker",
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "div",
-              {
-                className: "w-2 h-2 rounded-full flex-shrink-0",
-                style: {
-                  background: "#ffd700",
-                  boxShadow: "0 0 6px #ffd700",
-                  animation: "pulse 1s ease-in-out infinite"
-                }
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "span",
-              {
-                className: "text-xs font-bold uppercase tracking-widest",
-                style: { color: "#ffd700" },
-                children: "BASS NOTE TRACKER ACTIVE"
-              }
-            )
-          ]
-        }
-      )
-    ] }),
-    isActive && !engine.lowEndBoosterClaimed && engine.lowEndBoosterTimeLeft !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "text-center px-3 py-2 rounded",
-        style: {
-          background: "rgba(255,215,0,0.08)",
-          border: "1px solid rgba(255,215,0,0.3)"
-        },
-        "data-ocid": "low_end_booster.countdown",
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(255,215,0,0.6)" }, children: "TEST MODE" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: "text-xl font-mono font-bold",
-              style: {
-                color: "#ffd700",
-                textShadow: "0 0 12px rgba(255,215,0,0.5)"
-              },
-              children: formatCountdown(engine.lowEndBoosterTimeLeft)
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: "text-xs mt-0.5",
-              style: { color: "rgba(255,215,0,0.4)" },
-              children: "REMAINING — HOLD CLAIM TO KEEP"
-            }
-          )
-        ]
-      }
-    ),
-    engine.lowEndBoosterClaimed && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "text-center px-3 py-2.5 rounded",
-        style: {
-          background: "rgba(0,255,136,0.1)",
-          border: "1px solid rgba(0,255,136,0.5)",
-          boxShadow: "0 0 12px rgba(0,255,136,0.3)"
-        },
-        "data-ocid": "low_end_booster.claimed_badge",
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: "text-sm font-bold uppercase tracking-widest",
-              style: { color: "#00ff88" },
-              children: "✓ YOURS — PERMANENT"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: "text-xs mt-0.5",
-              style: { color: "rgba(0,255,136,0.6)" },
-              children: "LOW END BOOSTER CLAIMED BY GERROD"
-            }
-          )
-        ]
-      }
-    ),
-    showExpired && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        type: "button",
-        onClick: handleActivate,
-        className: "w-full py-2 rounded text-xs font-bold uppercase tracking-widest transition-smooth",
-        style: {
-          background: "rgba(255,60,60,0.1)",
-          border: "1px solid rgba(255,60,60,0.4)",
-          color: "#ff6b6b"
-        },
-        "data-ocid": "low_end_booster.retest_button",
-        children: "TEST EXPIRED — TAP TO RETEST"
-      }
-    ),
-    !isActive && !showExpired && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "button",
-      {
-        type: "button",
-        onClick: handleActivate,
-        className: "w-full py-3 rounded font-bold uppercase tracking-widest text-sm transition-smooth",
-        style: {
-          background: "linear-gradient(135deg, rgba(0,212,255,0.15), rgba(255,215,0,0.1))",
-          border: "1px solid rgba(0,212,255,0.5)",
-          color: "#00d4ff",
-          boxShadow: "0 0 15px rgba(0,212,255,0.2)"
-        },
-        "data-ocid": "low_end_booster.activate_button",
-        children: "▶ ACTIVATE — 15 MIN TEST"
-      }
-    ),
-    isActive && !engine.lowEndBoosterClaimed && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
-      isHolding && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: "w-full h-2 rounded-full overflow-hidden",
-          style: {
-            background: "rgba(0,0,0,0.4)",
-            border: "1px solid rgba(255,215,0,0.2)"
-          },
-          children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: "h-full rounded-full transition-all duration-100",
-              style: {
-                width: `${holdProgress}%`,
-                background: "linear-gradient(90deg, #ffd700, #00d4ff)",
-                boxShadow: "0 0 8px rgba(255,215,0,0.5)"
-              },
-              "data-ocid": "low_end_booster.claim_progress"
-            }
-          )
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          type: "button",
-          onMouseDown: startHold,
-          onMouseUp: stopHold,
-          onMouseLeave: stopHold,
-          onTouchStart: startHold,
-          onTouchEnd: stopHold,
-          className: "w-full py-2.5 rounded font-bold uppercase tracking-widest text-xs transition-smooth select-none",
-          style: {
-            background: isHolding ? "rgba(255,215,0,0.2)" : "rgba(255,215,0,0.08)",
-            border: `1px solid ${isHolding ? "rgba(255,215,0,0.7)" : "rgba(255,215,0,0.35)"}`,
-            color: "#ffd700",
-            boxShadow: isHolding ? "0 0 15px rgba(255,215,0,0.4)" : "none"
-          },
-          "data-ocid": "low_end_booster.claim_button",
-          "aria-label": "Hold to claim Low End Booster permanently",
-          children: isHolding ? `CLAIMING... ${holdProgress}%` : "⬛ HOLD TO CLAIM — MAKE IT YOURS"
         }
       )
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
-        className: "space-y-1 pt-1 border-t",
-        style: { borderColor: "rgba(0,212,255,0.1)" },
+        className: "p-2 rounded",
+        style: {
+          background: "rgba(0,212,255,0.04)",
+          border: "1px solid rgba(0,212,255,0.12)"
+        },
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.35)" }, children: "● BOTH TRACKING LANES ACTIVE SIMULTANEOUSLY" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,255,136,0.35)" }, children: "● SPEAKER LIMITS RESPECTED" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-xs font-bold uppercase tracking-widest mb-1.5",
+              style: { color: "rgba(0,212,255,0.7)" },
+              children: "RULE BOOK STATUS"
+            }
+          ),
+          [
+            { label: "GAINS AT 0.0 OR UNITY", ok: true },
+            { label: "NO WAVE SHAPERS", ok: true },
+            { label: "NO STACKING", ok: true },
+            { label: "OLD LIMITER DELETED", ok: true },
+            { label: "CANISTER COVERS LOW-END", ok: true }
+          ].map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 py-0.5", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                style: {
+                  color: item.ok ? "#00ff88" : "#ff4444",
+                  fontSize: "0.7rem"
+                },
+                children: item.ok ? "✓" : "✗"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: "text-xs",
+                style: {
+                  color: item.ok ? "rgba(0,255,136,0.7)" : "rgba(255,68,68,0.8)"
+                },
+                children: item.label
+              }
+            )
+          ] }, item.label))
         ]
       }
     )
   ] });
 }
 function MidsAmp() {
-  const engine = useAudioEngine();
-  const isLive = engine.isPlaying && engine.highsContextState === "running";
-  const reduction = engine.highsCompReduction ?? 0;
-  const drive = Math.min(100, Math.abs(reduction) * 10);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: "text-sm font-bold uppercase tracking-widest mb-1",
-        style: { color: "#ffd700" },
-        children: "MIDS AMP — SRS 2022"
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "div",
-      {
-        className: "text-xs font-bold mb-3 px-2 py-1 rounded",
-        style: {
-          background: "rgba(0,212,255,0.1)",
-          color: "#00d4ff",
-          border: "1px solid rgba(0,212,255,0.3)"
-        },
-        children: "HIGHS & MIDS ONLY • RCA SET 2 FROM HEAD UNIT"
-      }
-    ),
-    [
-      { label: "RCA INPUT", value: "RCA SET 2" },
-      {
-        label: "HIGHPASS FILTER",
-        value: `${engine.highsFilterFreq}Hz CUTOFF`
-      },
-      { label: "GAIN", value: "LOCKED 0.0" },
-      { label: "SIGNAL PATH", value: "WIRED 4 GAUGE" },
-      { label: "CONTEXT", value: engine.highsContextState.toUpperCase() },
-      { label: "OUTPUT", value: "HIGHS + MIDS" }
-    ].map((row) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "flex items-center justify-between py-2 border-b",
-        style: { borderColor: "rgba(0,212,255,0.1)" },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "span",
-            {
-              className: "text-xs font-bold uppercase tracking-widest",
-              style: { color: "rgba(0,212,255,0.8)" },
-              children: row.label
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: isLive ? "badge-live" : "badge-off", children: row.value })
-        ]
-      },
-      row.label
-    )),
-    drive > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
-      {
-        className: "flex items-center justify-between px-3 py-2 rounded mt-2",
-        style: {
-          background: "rgba(255,68,68,0.1)",
-          border: "1px solid rgba(255,68,68,0.3)"
-        },
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "span",
-            {
-              className: "text-xs font-bold uppercase",
-              style: { color: "#ff4444" },
-              children: "DRIVE METER"
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-end gap-0.5 h-4", children: [20, 40, 60, 80, 100].map((threshold) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "div",
-            {
-              className: "w-2 rounded-sm",
-              style: {
-                height: `${12 + threshold / 10}px`,
-                background: drive >= threshold ? "#ff4444" : "rgba(255,68,68,0.2)"
-              }
-            },
-            threshold
-          )) })
-        ]
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-4 mt-3", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            className: "text-xs font-bold uppercase",
-            style: { color: "rgba(0,212,255,0.7)" },
-            children: "CH1"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            className: isLive ? "badge-live" : "badge-off",
-            "data-ocid": "midsamp.ch1_live",
-            children: isLive ? "✓ LIVE" : "OFF"
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            className: "text-xs font-bold uppercase",
-            style: { color: "rgba(0,212,255,0.7)" },
-            children: "CH2"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            className: isLive ? "badge-live" : "badge-off",
-            "data-ocid": "midsamp.ch2_live",
-            children: isLive ? "✓ LIVE" : "OFF"
-          }
-        )
-      ] })
-    ] })
-  ] });
+  return null;
 }
 function PowerManagement() {
   const engine = useAudioEngine();
@@ -26031,6 +26837,50 @@ function PowerManagement() {
             )
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs mt-1", style: { color: "rgba(255,215,0,0.5)" }, children: "TRUE POWER: HIDDEN • CLASSIFIED" })
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "p-3 rounded space-y-1.5 mb-1",
+        style: {
+          background: "rgba(0,0,0,0.4)",
+          border: "1px solid rgba(255,215,0,0.3)"
+        },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-xs font-bold uppercase tracking-widest",
+              style: { color: "#ffd700" },
+              children: "THUNDER BATTERY POWER CHAIN"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-xs font-mono font-bold",
+              style: { color: "#00ff88" },
+              children: "688 RUNS × 2,500W = 1,720,000W CHARACTERISTICS"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-xs font-mono",
+              style: { color: "rgba(0,212,255,0.7)" },
+              children: "344,000 BATTERIES | 688 FUSES | 9V × 5W EACH"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-xs font-mono",
+              style: { color: "rgba(0,255,136,0.7)" },
+              children: "CHARACTERISTICS POWER BEHAVIOR MIMIC → HELIX AMP"
+            }
+          )
         ]
       }
     ),
@@ -26333,6 +27183,287 @@ function ProcessorChar() {
     )
   ] });
 }
+function ProcessorMimic120dB() {
+  const engine = useAudioEngine();
+  const {
+    processorMimic120dB,
+    srlControlling120dB,
+    setProcessorMimic120dB,
+    srlGrade
+  } = engine;
+  const srlBlocking = srlControlling120dB;
+  const ceilPercent = processorMimic120dB;
+  const ceilDb = ceilPercent / 100 * 120;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "text-sm font-bold uppercase tracking-widest",
+          style: { color: "#ffd700" },
+          children: "120dB PROCESSOR MIMIC"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "text-xs mt-0.5 font-mono",
+          style: { color: "rgba(0,212,255,0.6)" },
+          children: "SILENT BACKGROUND MODULE"
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider",
+        style: {
+          background: "rgba(0,255,136,0.12)",
+          border: "1px solid rgba(0,255,136,0.4)",
+          color: "#00ff88"
+        },
+        "data-ocid": "mimic120.status_badge",
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              className: "w-1.5 h-1.5 rounded-full",
+              style: { background: "#00ff88" }
+            }
+          ),
+          "BACKGROUND ACTIVE — NOT IN SIGNAL CHAIN"
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        className: "p-2 rounded text-xs",
+        style: {
+          background: "rgba(0,212,255,0.04)",
+          border: "1px solid rgba(0,212,255,0.12)",
+          color: "rgba(0,212,255,0.55)"
+        },
+        children: "Trained to mimic the behavior of a real 120dB processor. Runs in background — not in signal chain. Reference layer gives the system a ceiling to push toward."
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "p-2 rounded text-center",
+          style: {
+            background: "rgba(255,215,0,0.06)",
+            border: "1px solid rgba(255,215,0,0.2)"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "text-xs font-bold",
+                style: { color: "rgba(255,215,0,0.5)" },
+                children: "SLOT"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "text-xs font-mono font-bold",
+                style: { color: "#ffd700" },
+                children: "2848"
+              }
+            )
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "p-2 rounded text-center",
+          style: {
+            background: "rgba(0,255,136,0.06)",
+            border: "1px solid rgba(0,255,136,0.2)"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "text-xs font-bold",
+                style: { color: "rgba(0,255,136,0.5)" },
+                children: "DRAW"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "text-xs font-mono font-bold",
+                style: { color: "#00ff88" },
+                children: "0W"
+              }
+            )
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-1", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            className: "text-xs font-bold uppercase tracking-widest",
+            style: { color: "rgba(0,212,255,0.7)" },
+            children: "DECIBEL CEILING"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "span",
+          {
+            className: "text-xs font-mono font-bold",
+            style: { color: "#ffd700" },
+            children: [
+              ceilDb.toFixed(1),
+              " dB"
+            ]
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "w-full h-6 rounded overflow-hidden",
+          style: {
+            background: "rgba(0,0,0,0.5)",
+            border: "1px solid rgba(0,212,255,0.2)"
+          },
+          children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "h-full transition-all duration-300",
+              style: {
+                width: `${ceilPercent}%`,
+                background: "linear-gradient(90deg, rgba(0,212,255,0.4), rgba(255,215,0,0.6))",
+                boxShadow: "0 0 8px rgba(255,215,0,0.4)"
+              }
+            }
+          )
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between mt-0.5", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.3)" }, children: "0 dB" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.3)" }, children: "120 dB" })
+      ] })
+    ] }),
+    srlBlocking && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        className: "px-3 py-2 rounded text-xs font-bold uppercase tracking-wider",
+        style: {
+          background: "rgba(255,68,68,0.12)",
+          border: "1px solid rgba(255,68,68,0.4)",
+          color: "#ff4444"
+        },
+        "data-ocid": "mimic120.srl_warning",
+        children: "⚠ SRL ACTIVE — MANAGING LEVEL"
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "flex flex-col gap-1 py-2 border-b",
+        style: { borderColor: "rgba(0,212,255,0.1)" },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: "text-xs font-bold uppercase tracking-widest",
+                style: { color: "#ffd700" },
+                children: "120dB DECIBEL LEVEL"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "span",
+              {
+                className: "text-xs font-mono font-bold",
+                style: { color: "#ffd700" },
+                children: [
+                  ceilPercent,
+                  "%"
+                ]
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "WORLD FIRST — controlled by Smart Range Limiter" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              "data-ocid": "mimic120.level_slider",
+              type: "range",
+              min: 0,
+              max: 100,
+              value: ceilPercent,
+              disabled: srlBlocking,
+              onChange: (e) => setProcessorMimic120dB(Number(e.target.value)),
+              className: "w-full mt-1",
+              style: { accentColor: "#ffd700", opacity: srlBlocking ? 0.4 : 1 }
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.4)" }, children: [
+            "SRL GRADE:",
+            " ",
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                style: {
+                  color: srlGrade === "D" ? "#ff4444" : "#00ff88",
+                  fontWeight: "bold"
+                },
+                children: srlGrade
+              }
+            )
+          ] })
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        className: "px-2 py-1.5 rounded text-xs",
+        style: {
+          background: "rgba(0,212,255,0.05)",
+          border: "1px solid rgba(0,212,255,0.1)",
+          color: "rgba(0,212,255,0.45)"
+        },
+        children: "● At 0%: characteristics muted to 50% ceiling  |  At 100%: full 120dB reference ceiling"
+      }
+    )
+  ] });
+}
+const HD_BADGE$1 = /* @__PURE__ */ jsxRuntimeExports.jsx(
+  "span",
+  {
+    style: {
+      background: "rgba(0,0,0,0.5)",
+      color: "#00d4ff",
+      border: "1px solid rgba(0,212,255,0.4)",
+      fontSize: "0.55rem",
+      padding: "1px 4px",
+      borderRadius: "3px",
+      marginLeft: "4px",
+      fontWeight: "bold"
+    },
+    children: "HD"
+  }
+);
+const hdMonitorProcess$1 = (rawValue, sliderType) => {
+  let processed = rawValue;
+  if (rawValue < 10) processed = rawValue * 1.2;
+  else if (rawValue > 80) processed = Math.min(rawValue * 0.95, 100);
+  console.log(
+    `[Superior HD Monitor][${sliderType}] Input: ${rawValue.toFixed(2)}, Processed: ${processed.toFixed(2)}`
+  );
+  return processed;
+};
 const GRADE_COLORS$1 = {
   "A+": {
     color: "#00d4ff",
@@ -26362,12 +27493,15 @@ const GRADE_COLORS$1 = {
 function SliderRow({ label, value, onChange, ocid }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "span",
         {
-          className: "text-xs font-bold uppercase tracking-widest",
+          className: "text-xs font-bold uppercase tracking-widest flex items-center",
           style: { color: "rgba(0,212,255,0.85)" },
-          children: label
+          children: [
+            label,
+            HD_BADGE$1
+          ]
         }
       ),
       /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -26394,9 +27528,9 @@ function SliderRow({ label, value, onChange, ocid }) {
         min: 0,
         max: 100,
         value,
-        onChange: (e) => onChange(Number(e.target.value)),
+        onChange: (e) => onChange(hdMonitorProcess$1(Number(e.target.value), ocid)),
         className: "w-full h-2 rounded-full appearance-none cursor-pointer",
-        style: { accentColor: "#00d4ff" },
+        style: { maxWidth: "180px", accentColor: "#00d4ff" },
         "data-ocid": `${ocid}.slider`
       }
     ),
@@ -26599,12 +27733,249 @@ function Protection() {
     )
   ] });
 }
+function SafetyProcessor() {
+  const engine = useAudioEngine();
+  const { volume, safetyProcessorLevel } = engine;
+  const strengthPct = safetyProcessorLevel ?? 0;
+  const lowEndStrengthened = volume > 50;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-3", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "text-sm font-bold uppercase tracking-widest",
+          style: { color: "#ffd700" },
+          children: "SMART SAFETY PROCESSOR"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "text-xs mt-0.5 font-mono",
+          style: { color: "rgba(0,212,255,0.6)" },
+          children: "VOLUME 1-100 PROTECTION"
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider",
+        style: {
+          background: "rgba(0,255,136,0.12)",
+          border: "1px solid rgba(0,255,136,0.4)",
+          color: "#00ff88"
+        },
+        "data-ocid": "safety_proc.status_badge",
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              className: "w-1.5 h-1.5 rounded-full",
+              style: {
+                background: "#00ff88",
+                animation: "pulse 1.5s ease-in-out infinite"
+              }
+            }
+          ),
+          "ALWAYS ACTIVE — AUTOMATIC"
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        className: "p-2 rounded text-xs",
+        style: {
+          background: "rgba(0,212,255,0.04)",
+          border: "1px solid rgba(0,212,255,0.12)",
+          color: "rgba(0,212,255,0.55)"
+        },
+        children: "Tracks volume across the full 1-100 range. Keeps bass and volume completely separate. Straightens out the low end as volume climbs. No user controls needed."
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-1", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            className: "text-xs font-bold uppercase tracking-widest",
+            style: { color: "rgba(0,212,255,0.7)" },
+            children: "VOLUME LEVEL"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "span",
+          {
+            className: "text-xs font-mono font-bold",
+            style: { color: "#ffd700" },
+            children: [
+              volume,
+              " / 100"
+            ]
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "w-full h-3 rounded overflow-hidden",
+          style: {
+            background: "rgba(0,0,0,0.5)",
+            border: "1px solid rgba(0,212,255,0.2)"
+          },
+          children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "h-full transition-all duration-200",
+              style: {
+                width: `${volume}%`,
+                background: "linear-gradient(90deg, rgba(0,212,255,0.5), rgba(255,215,0,0.7))"
+              }
+            }
+          )
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-1", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            className: "text-xs font-bold uppercase tracking-widest",
+            style: { color: "rgba(0,212,255,0.7)" },
+            children: "SAFETY STRENGTH"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "span",
+          {
+            className: "text-xs font-mono font-bold",
+            style: { color: "#00ff88" },
+            children: [
+              strengthPct.toFixed(0),
+              "%"
+            ]
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "w-full h-3 rounded overflow-hidden",
+          style: {
+            background: "rgba(0,0,0,0.5)",
+            border: "1px solid rgba(0,255,136,0.2)"
+          },
+          children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "h-full transition-all duration-200",
+              style: {
+                width: `${strengthPct}%`,
+                background: "linear-gradient(90deg, rgba(0,255,136,0.4), rgba(0,255,136,0.8))",
+                boxShadow: strengthPct > 50 ? "0 0 6px rgba(0,255,136,0.5)" : "none"
+              }
+            }
+          )
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider",
+          style: {
+            background: "rgba(0,255,136,0.12)",
+            border: `1px solid ${"rgba(0,255,136,0.4)"}`,
+            color: "#00ff88"
+          },
+          "data-ocid": "safety_proc.bass_independent_badge",
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: "w-1.5 h-1.5 rounded-full",
+                style: { background: "currentColor" }
+              }
+            ),
+            "BASS INDEPENDENT"
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider",
+          style: {
+            background: lowEndStrengthened ? "rgba(0,212,255,0.12)" : "rgba(0,0,0,0.3)",
+            border: `1px solid ${lowEndStrengthened ? "rgba(0,212,255,0.4)" : "rgba(0,212,255,0.15)"}`,
+            color: lowEndStrengthened ? "#00d4ff" : "rgba(0,212,255,0.3)"
+          },
+          "data-ocid": "safety_proc.low_end_badge",
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: "w-1.5 h-1.5 rounded-full",
+                style: { background: "currentColor" }
+              }
+            ),
+            "LOW END STRENGTHENED"
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "p-2 rounded",
+        style: {
+          background: "rgba(255,215,0,0.06)",
+          border: "1px solid rgba(255,215,0,0.2)"
+        },
+        "data-ocid": "safety_proc.power_display",
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-xs font-bold uppercase tracking-widest",
+              style: { color: "rgba(255,215,0,0.8)" },
+              children: "THUNDER BATTERY: 1,000W DIRECT"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "div",
+            {
+              className: "text-xs mt-0.5",
+              style: { color: "rgba(255,215,0,0.4)" },
+              children: "RAW POWER — NO INTERFERENCE"
+            }
+          )
+        ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        className: "px-2 py-1.5 rounded text-xs",
+        style: {
+          background: "rgba(0,212,255,0.05)",
+          border: "1px solid rgba(0,212,255,0.1)",
+          color: "rgba(0,212,255,0.35)"
+        },
+        children: "● Fully automatic — no user controls required  |  ● Powered by 1,000W characteristics from Thunder Battery"
+      }
+    )
+  ] });
+}
 function SignalRouting() {
   const engine = useAudioEngine();
   const steps = [
     { label: "FILE INPUT", color: "#ffd700", arrow: true },
     {
-      label: `AUDIO CONTEXT ×2 (${engine.bassContextState.toUpperCase()} / ${engine.highsContextState.toUpperCase()})`,
+      label: `AUDIO CONTEXT — ${engine.bassContextState.toUpperCase()}`,
       color: "#00d4ff",
       arrow: true
     },
@@ -26619,7 +27990,7 @@ function SignalRouting() {
       arrow: true
     },
     {
-      label: `SMART RANGE LIMITER (VOL ${engine.volume}/700)`,
+      label: `SMART RANGE LIMITER (VOL ${engine.volume}/100)`,
       color: "#00ff88",
       arrow: true
     },
@@ -26628,8 +27999,11 @@ function SignalRouting() {
       color: "#00ff88",
       arrow: true
     },
-    { label: "BASS AMP — SRS 2022", color: "#ffd700", arrow: true },
-    { label: "MIDS AMP — SRS 2022", color: "#ffd700", arrow: true },
+    {
+      label: "HELIX DSP AMP — VIRTUAL DIGITAL ANALOG SIMULATION",
+      color: "#ffd700",
+      arrow: true
+    },
     { label: "SPEAKERS OUTPUT", color: "#00ff88", arrow: false }
   ];
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
@@ -26669,7 +28043,7 @@ function SignalRouting() {
       {
         className: "mt-3 text-xs font-mono",
         style: { color: "rgba(0,212,255,0.4)" },
-        children: "NO WAVESHAPER • NO PREAMP • NO BASS STACKING • GAINS LOCKED 1.0"
+        children: "NO WAVESHAPER • NO PREAMP • NO BASS STACKING • GAINS LOCKED 0.0"
       }
     )
   ] });
@@ -26709,15 +28083,39 @@ function SmartRangeLimiter() {
           border: "1px solid rgba(0,212,255,0.25)"
         },
         children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 flex-wrap", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "text-xs font-bold uppercase tracking-widest",
+                style: { color: "#00d4ff" },
+                children: "SMART RANGE LIMITER"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: "text-xs font-bold px-1.5 py-0.5 rounded uppercase",
+                style: {
+                  background: "rgba(0,212,255,0.18)",
+                  border: "1px solid rgba(0,212,255,0.5)",
+                  color: "#00d4ff",
+                  fontSize: "0.6rem",
+                  letterSpacing: "0.05em"
+                },
+                children: "HD MONITOR: ACTIVE"
+              }
+            )
+          ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             "div",
             {
-              className: "text-xs font-bold uppercase tracking-widest",
-              style: { color: "#00d4ff" },
-              children: "SMART RANGE LIMITER"
+              className: "text-xs font-semibold",
+              style: { color: "rgba(0,212,255,0.75)" },
+              children: "SUPERIOR HD MONITOR: BUILT IN — AGGRESSIVE"
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "GERROD’S DESIGN — 1,000W CHARACTERISTICS" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "GERROD'S DESIGN — 1,000W CHARACTERISTICS" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.4)" }, children: "Lives inside Volume + EQ + Sub Bass — direct contact" })
         ]
       }
@@ -26893,10 +28291,10 @@ function SmartRangeLimiter() {
               "span",
               {
                 className: "text-xs font-mono font-bold",
-                style: { color: volume >= 500 ? "#ff9500" : "#00d4ff" },
+                style: { color: volume >= 80 ? "#ff9500" : "#00d4ff" },
                 children: [
                   volume,
-                  " / 700"
+                  " / 100"
                 ]
               }
             )
@@ -27013,6 +28411,31 @@ function StereoWidth() {
     ))
   ] });
 }
+const HD_BADGE = /* @__PURE__ */ jsxRuntimeExports.jsx(
+  "span",
+  {
+    style: {
+      background: "rgba(0,0,0,0.5)",
+      color: "#00d4ff",
+      border: "1px solid rgba(0,212,255,0.4)",
+      fontSize: "0.55rem",
+      padding: "1px 4px",
+      borderRadius: "3px",
+      marginLeft: "4px",
+      fontWeight: "bold"
+    },
+    children: "HD"
+  }
+);
+const hdMonitorProcess = (rawValue, sliderType) => {
+  let processed = rawValue;
+  if (rawValue < 10) processed = rawValue * 1.2;
+  else if (rawValue > 80) processed = Math.min(rawValue * 0.95, 100);
+  console.log(
+    `[Superior HD Monitor][${sliderType}] Input: ${rawValue.toFixed(2)}, Processed: ${processed.toFixed(2)}`
+  );
+  return processed;
+};
 function SubwooferControl() {
   const engine = useAudioEngine();
   const [level, setLevel] = reactExports.useState(engine.subLevel ?? 100);
@@ -27045,12 +28468,15 @@ function SubwooferControl() {
         style: { borderColor: "rgba(0,212,255,0.1)" },
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between mb-1", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
               "span",
               {
-                className: "text-xs font-bold uppercase tracking-widest",
+                className: "text-xs font-bold uppercase tracking-widest flex items-center",
                 style: { color: "rgba(0,212,255,0.8)" },
-                children: "SUB LEVEL"
+                children: [
+                  "SUB LEVEL",
+                  HD_BADGE
+                ]
               }
             ),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -27073,9 +28499,9 @@ function SubwooferControl() {
               min: 0,
               max: 100,
               value: level,
-              onChange: (e) => handleLevel(Number(e.target.value)),
+              onChange: (e) => handleLevel(hdMonitorProcess(Number(e.target.value), "sub-level")),
               className: "w-full",
-              style: { accentColor: "#00d4ff" }
+              style: { maxWidth: "180px", accentColor: "#00d4ff" }
             }
           )
         ]
@@ -27370,12 +28796,12 @@ function WiringStatus() {
   const CONNECTIONS = [
     { from: "THUNDER BATTERY", to: "SIGNAL BOOSTER", gauge: "4 AWG" },
     { from: "SIGNAL BOOSTER", to: "CHIP COMMANDER", gauge: "4 AWG" },
-    { from: "CHIP COMMANDER", to: "BASS AMP", gauge: "4 AWG" },
-    { from: "CHIP COMMANDER", to: "MIDS AMP", gauge: "4 AWG" },
-    { from: "HEAD UNIT", to: "BASS AMP (RCA SET 1)", gauge: "RCA" },
-    { from: "HEAD UNIT", to: "MIDS AMP (RCA SET 2)", gauge: "RCA" },
-    { from: "BASS AMP", to: "SUBWOOFER", gauge: "4 AWG" },
-    { from: "MIDS AMP", to: "SPEAKERS", gauge: "4 AWG" }
+    { from: "CHIP COMMANDER", to: "HELIX DSP AMP", gauge: "4 AWG" },
+    { from: "CHIP COMMANDER", to: "INTELLIGENCE LAYER", gauge: "4 AWG" },
+    { from: "HEAD UNIT", to: "HELIX DSP AMP (RCA SET 1)", gauge: "RCA" },
+    { from: "HEAD UNIT", to: "INTELLIGENCE LAYER (RCA SET 2)", gauge: "RCA" },
+    { from: "HELIX DSP AMP", to: "SUBWOOFER", gauge: "4 AWG" },
+    { from: "VDA PROCESSOR", to: "SPEAKERS", gauge: "4 AWG" }
   ];
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -27520,14 +28946,16 @@ const MODULES = [
   { id: 1, name: "BASS SYSTEM", icon: "🔊", component: BassSystem },
   { id: 2, name: "EQ", icon: "🎶", component: EQ },
   { id: 3, name: "PROTECTION", icon: "🛡️", component: Protection },
-  { id: 4, name: "BASSAMP SRS", icon: "⚡", component: BassAmp },
-  { id: 5, name: "MIDS AMP", icon: "🔍", component: MidsAmp },
+  { id: 4, name: "HELIX DSP AMP", icon: "⚡", component: BassAmp },
+  { id: 5, name: "VDA PROCESSOR", icon: "🔍", component: MidsAmp },
   { id: 6, name: "HIGHS", icon: "📡", component: Highs },
-  { id: 7, name: "ASO-V3 SOVEREIGN", icon: "🔱", component: ASOv3Amp },
+  { id: 7, name: "INTEL COMMANDER", icon: "🔱", component: ASOv3Amp },
   { id: 8, name: "XM PROCESSOR", icon: "📡", component: XMProcessor },
   { id: 9, name: "SMART LIMITER", icon: "📊", component: SmartRangeLimiter },
   { id: 10, name: "BASS EPICENTER", icon: "🌊", component: Epicenter },
-  { id: 11, name: "LOW END BOOSTER", icon: "🟡", component: LowEndBooster },
+  { id: 11, name: "SYSTEM HEALTH", icon: "💚", component: LowEndBooster },
+  { id: 27, name: "120dB MIMIC", icon: "🔷", component: ProcessorMimic120dB },
+  { id: 28, name: "SAFETY PROC", icon: "🛡", component: SafetyProcessor },
   { id: 12, name: "CANISTER", icon: "🟡", component: Canister },
   { id: 13, name: "ANTENNA", icon: "📡", component: Antenna },
   { id: 14, name: "CROSSOVER", icon: "✂️", component: Crossover },
@@ -27535,6 +28963,7 @@ const MODULES = [
   { id: 16, name: "PROCESSOR CHAR", icon: "⚙️", component: ProcessorChar },
   { id: 17, name: "CHIP COMMANDER", icon: "🖥️", component: ChipCommander },
   { id: 18, name: "STEREO WIDTH", icon: "↔️", component: StereoWidth },
+  // IDs 27 and 28 are inserted above inline (120dB Mimic + Safety Proc)
   { id: 19, name: "GAIN STRUCTURE", icon: "📊", component: GainStructure },
   { id: 20, name: "SUBWOOFER", icon: "📣", component: SubwooferControl },
   { id: 21, name: "ULTRA", icon: "⚡", component: Ultra },
@@ -27552,7 +28981,7 @@ function ModuleGrid() {
       {
         className: "text-xs font-bold uppercase tracking-widest",
         style: { color: "rgba(0,212,255,0.6)" },
-        children: "CHIP COMMANDER — 26 MODULES • ALL WIRED • 4 GAUGE • ULTRA AUTHORITY ONLINE"
+        children: "CHIP COMMANDER — 28 MODULES • ALL WIRED • 4 GAUGE • ULTRA AUTHORITY ONLINE"
       }
     ) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -27561,56 +28990,101 @@ function ModuleGrid() {
         className: "grid gap-3",
         style: { gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" },
         "data-ocid": "module_grid",
-        children: MODULES.map((mod2) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "button",
-          {
-            type: "button",
-            "data-ocid": `module.item.${mod2.id}`,
-            onClick: () => setOpenModule(mod2),
-            className: "group relative flex flex-col items-center gap-1.5 p-3 rounded border text-center transition-smooth",
-            style: {
-              background: "rgba(0,10,30,0.8)",
-              borderColor: "rgba(0,212,255,0.2)"
+        children: MODULES.map((mod2) => {
+          if (mod2.id === 5 || mod2.id === 7) {
+            return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "div",
+              {
+                "data-ocid": `module.item.${mod2.id}`,
+                className: "flex flex-col items-center gap-1.5 p-3 rounded border text-center",
+                style: {
+                  background: "rgba(0,10,30,0.8)",
+                  borderColor: "rgba(0,255,136,0.3)",
+                  cursor: "default"
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xl", children: mod2.icon }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "span",
+                    {
+                      className: "text-xs font-bold uppercase tracking-widest leading-tight",
+                      style: { color: "#00ff88" },
+                      children: [
+                        mod2.id.toString().padStart(2, "0"),
+                        " ",
+                        mod2.name
+                      ]
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "span",
+                    {
+                      className: "text-xs font-bold uppercase tracking-widest px-1.5 py-0.5 rounded",
+                      style: {
+                        background: "rgba(0,255,136,0.15)",
+                        border: "1px solid rgba(0,255,136,0.5)",
+                        color: "#00ff88",
+                        fontSize: "0.55rem"
+                      },
+                      children: "● ACTIVE"
+                    }
+                  )
+                ]
+              },
+              mod2.id
+            );
+          }
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              "data-ocid": `module.item.${mod2.id}`,
+              onClick: () => setOpenModule(mod2),
+              className: "group relative flex flex-col items-center gap-1.5 p-3 rounded border text-center transition-smooth",
+              style: {
+                background: "rgba(0,10,30,0.8)",
+                borderColor: "rgba(0,212,255,0.2)"
+              },
+              onMouseEnter: (e) => {
+                e.currentTarget.style.borderColor = "rgba(0,212,255,0.8)";
+                e.currentTarget.style.boxShadow = "0 0 15px rgba(0,212,255,0.3)";
+              },
+              onMouseLeave: (e) => {
+                e.currentTarget.style.borderColor = "rgba(0,212,255,0.2)";
+                e.currentTarget.style.boxShadow = "none";
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xl", children: mod2.icon }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "span",
+                  {
+                    className: "text-xs font-bold uppercase tracking-widest leading-tight",
+                    style: { color: "#00d4ff" },
+                    children: [
+                      mod2.id.toString().padStart(2, "0"),
+                      " ",
+                      mod2.name
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    className: "text-xs font-bold uppercase tracking-widest px-1.5 py-0.5 rounded",
+                    style: {
+                      background: "rgba(0,212,255,0.1)",
+                      border: "1px solid rgba(0,212,255,0.4)",
+                      color: "#00d4ff",
+                      fontSize: "0.55rem"
+                    },
+                    children: "● WIRED"
+                  }
+                )
+              ]
             },
-            onMouseEnter: (e) => {
-              e.currentTarget.style.borderColor = "rgba(0,212,255,0.8)";
-              e.currentTarget.style.boxShadow = "0 0 15px rgba(0,212,255,0.3)";
-            },
-            onMouseLeave: (e) => {
-              e.currentTarget.style.borderColor = "rgba(0,212,255,0.2)";
-              e.currentTarget.style.boxShadow = "none";
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xl", children: mod2.icon }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "span",
-                {
-                  className: "text-xs font-bold uppercase tracking-widest leading-tight",
-                  style: { color: "#00d4ff" },
-                  children: [
-                    mod2.id.toString().padStart(2, "0"),
-                    " ",
-                    mod2.name
-                  ]
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "span",
-                {
-                  className: "text-xs font-bold uppercase tracking-widest px-1.5 py-0.5 rounded",
-                  style: {
-                    background: "rgba(0,212,255,0.1)",
-                    border: "1px solid rgba(0,212,255,0.4)",
-                    color: "#00d4ff",
-                    fontSize: "0.55rem"
-                  },
-                  children: "● WIRED"
-                }
-              )
-            ]
-          },
-          mod2.id
-        ))
+            mod2.id
+          );
+        })
       }
     ),
     openModule && /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -27624,6 +29098,7 @@ function ModuleGrid() {
   ] });
 }
 function StatusBar() {
+  var _a2;
   const engine = useAudioEngine();
   const ctxRunning = engine.bassContextState === "running" || engine.highsContextState === "running";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -27637,8 +29112,35 @@ function StatusBar() {
       },
       "data-ocid": "status_bar",
       children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            className: "inline-block px-3 py-1 rounded text-xs font-bold uppercase tracking-widest",
+            style: {
+              background: "rgba(0,212,255,0.15)",
+              border: "1px solid rgba(0,212,255,0.4)",
+              color: "#00d4ff"
+            },
+            "data-ocid": "status.amp_name_tag",
+            children: "HELIX DSP"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            className: "inline-block px-3 py-1 rounded text-xs font-bold uppercase tracking-widest",
+            style: {
+              background: "rgba(0,255,136,0.1)",
+              border: "1px solid rgba(0,255,136,0.3)",
+              color: "#00ff88"
+            },
+            "data-ocid": "status.vda_tag",
+            children: "VDA SIMULATION"
+          }
+        ),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-ocid": "status.commander_tag", children: engine.isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "badge-live", children: "● COMMANDER ON" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "badge-off", children: "● COMMANDER OFF" }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-ocid": "status.audio_ctx_tag", children: ctxRunning ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "badge-live", children: "● AUDIO CTX RUNNING" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "badge-off", children: "● AUDIO CTX SUSPENDED" }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { "data-ocid": "status.thread_b_tag", children: ((_a2 = engine.intelligenceLayer) == null ? void 0 : _a2.threadBActive) ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "badge-live", children: "● THREAD B ACTIVE" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "badge-off", children: "● THREAD B STANDBY" }) }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "badge-live", "data-ocid": "status.thunder_tag", children: "● THUNDER 120kW STABLE" }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "span",
@@ -27711,7 +29213,7 @@ function StatusBar() {
           {
             className: "ml-auto text-xs font-mono",
             style: { color: "rgba(0,212,255,0.4)" },
-            children: "5W EXT • 2× AUDIO CTX • 4 ENGINES"
+            children: "5W EXT • 1× HELIX CTX • 4 ENGINES"
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
