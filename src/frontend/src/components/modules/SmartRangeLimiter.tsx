@@ -71,7 +71,7 @@ export default function SmartRangeLimiter() {
           GERROD'S DESIGN — 1,000W CHARACTERISTICS
         </div>
         <div className="text-xs" style={{ color: "rgba(0,212,255,0.4)" }}>
-          Lives inside Volume + EQ + Sub Bass — direct contact
+          Lives inside: VOLUME → EQ → SUB BASS
         </div>
       </div>
 
@@ -157,7 +157,8 @@ export default function SmartRangeLimiter() {
           className="text-xs mt-0.5"
           style={{ color: "rgba(255,215,0,0.4)" }}
         >
-          No volume boost. No gain sliders. Monitor and fix only.
+          No volume boost. No gain sliders. No distortion sliders. Monitors and
+          fixes only.
         </div>
       </div>
 

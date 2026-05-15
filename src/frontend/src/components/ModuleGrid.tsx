@@ -36,7 +36,7 @@ interface ModuleDef {
   component: React.ComponentType;
 }
 
-// MODULES: UltraCrystal, Phase, Broadcast, Limiter (old), SRS2022, WirelessSignal,
+// MODULES: UltraCrystal, Phase, Broadcast, old Limiter, WirelessSignal,
 // ChannelMixer removed per Gerrod's instruction.
 // ASOv3Amp and SmartRangeLimiter added as replacements.
 const MODULES: ModuleDef[] = [

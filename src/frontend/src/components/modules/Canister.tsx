@@ -152,12 +152,10 @@ export default function Canister() {
               className="text-xs font-bold uppercase tracking-widest"
               style={{ color: "#ff6b35" }}
             >
-              <span className="flex items-center">
-                SLIDER 1: 14-40Hz BOTTOM NOTE{HD_BADGE}
-              </span>
+              <span className="flex items-center">14-40Hz TRACK{HD_BADGE}</span>
             </div>
             <div className="text-xs" style={{ color: "rgba(255,107,53,0.5)" }}>
-              Bottom note lane boost (F1 19Hz + F2 40Hz)
+              Wired → canisterF1 (19Hz) + canisterF2 (40Hz)
             </div>
           </div>
           <span
@@ -217,12 +215,10 @@ export default function Canister() {
               className="text-xs font-bold uppercase tracking-widest"
               style={{ color: "#00d4ff" }}
             >
-              <span className="flex items-center">
-                SLIDER 2: 14-80Hz PUNCH{HD_BADGE}
-              </span>
+              <span className="flex items-center">14-80Hz TRACK{HD_BADGE}</span>
             </div>
             <div className="text-xs" style={{ color: "rgba(0,212,255,0.5)" }}>
-              Punch lane boost (F3 80Hz peaking)
+              Wired → canisterF3 (80Hz) + canisterOut
             </div>
           </div>
           <span
@@ -336,10 +332,10 @@ export default function Canister() {
         style={{ borderColor: "rgba(255,215,0,0.1)" }}
       >
         <div className="text-xs" style={{ color: "rgba(255,107,53,0.5)" }}>
-          ● SLIDER 1 — 14-40Hz bottom note lane
+          ● SLIDER 1 — 14-40Hz Track → canisterF1/F2 nodes
         </div>
         <div className="text-xs" style={{ color: "rgba(0,212,255,0.5)" }}>
-          ● SLIDER 2 — 14-80Hz punch lane
+          ● SLIDER 2 — 14-80Hz Track → canisterF3/canisterOut nodes
         </div>
         <div className="text-xs" style={{ color: "rgba(255,215,0,0.4)" }}>
           ● BOTH LANES INDEPENDENT — speaker limits respected

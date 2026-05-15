@@ -10,28 +10,33 @@ export default function SignalRouting() {
       arrow: true,
     },
     {
-      label: `BASS: BIQUAD LOWPASS ${engine.bassFilterFreq}Hz`,
+      label: "INTELLIGENCE LAYER — 1,000MB CHIP + 25 SMART CHIPS",
+      color: "#00ff88",
+      arrow: true,
+    },
+    {
+      label: "DUAL THUNDER BATTERY CHAIN — 3,440,000W CHARACTERISTICS",
+      color: "#ffd700",
+      arrow: true,
+    },
+    {
+      label: "HELIX DSP AMP — VIRTUAL DIGITAL ANALOG SIMULATION",
       color: "#00d4ff",
       arrow: true,
     },
     {
-      label: `HIGHS: BIQUAD HIGHPASS ${engine.highsFilterFreq}Hz`,
+      label: `BASS PATH: BIQUAD LOWPASS ${engine.bassFilterFreq}Hz`,
+      color: "#ff6b35",
+      arrow: true,
+    },
+    {
+      label: `HIGHS PATH: BIQUAD HIGHPASS ${engine.highsFilterFreq}Hz`,
       color: "#00d4ff",
       arrow: true,
     },
     {
       label: `SMART RANGE LIMITER (VOL ${engine.volume}/100)`,
       color: "#00ff88",
-      arrow: true,
-    },
-    {
-      label: "PROCESSOR CHARACTERISTICS ACTIVE",
-      color: "#00ff88",
-      arrow: true,
-    },
-    {
-      label: "HELIX DSP AMP — VIRTUAL DIGITAL ANALOG SIMULATION",
-      color: "#ffd700",
       arrow: true,
     },
     { label: "SPEAKERS OUTPUT", color: "#00ff88", arrow: false },
@@ -47,7 +52,7 @@ export default function SignalRouting() {
           border: "1px solid rgba(0,212,255,0.3)",
         }}
       >
-        SIGNAL PATH DIAGRAM • 4 GAUGE WIRING
+        SIGNAL PATH DIAGRAM • ONE AMP: HELIX DSP
       </div>
 
       <div className="flex flex-col gap-0">
@@ -73,10 +78,14 @@ export default function SignalRouting() {
       </div>
 
       <div
-        className="mt-3 text-xs font-mono"
-        style={{ color: "rgba(0,212,255,0.4)" }}
+        className="mt-3 px-2 py-1.5 rounded text-xs font-mono"
+        style={{
+          background: "rgba(0,0,0,0.3)",
+          border: "1px solid rgba(0,212,255,0.1)",
+          color: "rgba(0,212,255,0.4)",
+        }}
       >
-        NO WAVESHAPER • NO PREAMP • NO BASS STACKING • GAINS LOCKED 0.0
+        NO SRS 2022 • NO LEGACY AMPS • NO WAVESHAPER • GAINS LOCKED 0.0
       </div>
     </div>
   );

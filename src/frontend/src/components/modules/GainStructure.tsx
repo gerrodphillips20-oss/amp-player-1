@@ -43,6 +43,36 @@ export default function GainStructure() {
         ALL 16 GAINS • LIVE ENGINE VALUES
       </div>
 
+      {/* Description banners */}
+      <div className="grid grid-cols-2 gap-1 mb-3">
+        <div
+          className="px-2 py-1.5 rounded text-xs"
+          style={{
+            background: "rgba(255,60,60,0.07)",
+            border: "1px solid rgba(255,60,60,0.25)",
+            color: "rgba(255,100,100,0.9)",
+          }}
+        >
+          <div className="font-bold uppercase">KILLABLE GAINS (8)</div>
+          <div style={{ fontSize: "0.6rem", marginTop: "2px" }}>
+            Set to 0.0 simultaneously
+          </div>
+        </div>
+        <div
+          className="px-2 py-1.5 rounded text-xs"
+          style={{
+            background: "rgba(0,255,120,0.06)",
+            border: "1px solid rgba(0,255,120,0.25)",
+            color: "rgba(0,230,120,0.9)",
+          }}
+        >
+          <div className="font-bold uppercase">BYPASS GAINS (2)</div>
+          <div style={{ fontSize: "0.6rem", marginTop: "2px" }}>
+            VOLUME + MASTER — pass-through only
+          </div>
+        </div>
+      </div>
+
       {/* Gain Kill Switch */}
       <div
         style={{
@@ -69,7 +99,13 @@ export default function GainStructure() {
           <button
             type="button"
             data-ocid="gain.kill_switch_button"
-            onClick={() => engine.setGainKillActive(!gainKillActive)}
+            onClick={() => {
+              engine.setGainKillActive(!gainKillActive);
+              console.log(
+                "[QA] Gain Kill Switch toggled. Kill active:",
+                !gainKillActive,
+              );
+            }}
             style={{
               background: gainKillActive ? "#ff2222" : "#333",
               color: "#fff",
@@ -184,6 +220,32 @@ export default function GainStructure() {
         </div>
       </div>
 
+      {/* Console log QA button */}
+      <button
+        type="button"
+        data-ocid="gain.console_log_button"
+        onClick={() => {
+          console.log("[GAIN QA] All gain node values:");
+          console.log("  gainKillActive:", gainKillActive);
+          console.log("  bassCompReduction (G03):", bassRed.toFixed(4));
+          console.log("  highsCompReduction (G07):", highsRed.toFixed(4));
+          console.log(
+            "  All fixed gains: G01, G02, G04, G05, G06, G08, G09-G12, G14, G15 = 0.0",
+          );
+          console.log(
+            "  Bypass nodes: VOLUME (pass-through), MASTER (fixed 1.0)",
+          );
+        }}
+        className="w-full mb-2 py-1 rounded text-xs font-bold uppercase tracking-widest"
+        style={{
+          background: "rgba(0,212,255,0.08)",
+          border: "1px solid rgba(0,212,255,0.3)",
+          color: "#00d4ff",
+          cursor: "pointer",
+        }}
+      >
+        🔍 LOG ALL GAIN VALUES TO CONSOLE (QA)
+      </button>
       <div className="grid grid-cols-2 gap-1">
         {GAINS.map((g) => (
           <div

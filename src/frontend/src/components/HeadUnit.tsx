@@ -82,7 +82,7 @@ export default function HeadUnit() {
               className="font-display font-bold uppercase text-sm tracking-widest"
               style={{ color: "#00d4ff" }}
             >
-              AMP PLAYER 1
+              AMP PLAYER 1 — ASO-V3
             </div>
           </div>
         </div>

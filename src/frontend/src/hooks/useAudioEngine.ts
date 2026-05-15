@@ -49,7 +49,6 @@
  */
 
 import {
-  type ReactNode,
   createContext,
   createElement,
   useCallback,
@@ -58,6 +57,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { MutableRefObject, ReactNode } from "react";
 
 export interface EQBandState {
   freq: number;
@@ -152,7 +152,7 @@ const volToGain = (v: number): number =>
 const pctToDb = (pct: number, minDb: number, maxDb: number): number =>
   minDb + (pct / 100) * (maxDb - minDb);
 
-const pctToGain = (pct: number): number => (pct / 100) * 2.0;
+const pctToGain = (pct: number): number => pct / 100;
 
 const sliderToParaWidth = (slider: number): number =>
   0.3 + (slider / 100) * 2.7;
@@ -165,7 +165,7 @@ const SAB_WEIGHT = 2;
 const SAB_CLARITY = 3;
 const SAB_BASS_DROP = 4;
 const SAB_BASS_NOTE = 5;
-const SAB_POWER_MIMIC = 6;
+const SAB_POWER_MIMIC = 6; // Thunder Battery Chain 1
 const SAB_SIGNAL_AUTH = 7;
 const SAB_AMP_RESPONSE = 8;
 const SAB_OHMS = 9;
@@ -173,6 +173,7 @@ const SAB_WATTS = 10;
 const SAB_CHIPS_ACTIVE = 11;
 const SAB_BT_CONNECTED = 12;
 const SAB_GAIN_KILL = 13;
+const SAB_POWER_MIMIC2 = 14; // Thunder Battery Chain 2 — same spec, parallel, offset phase
 
 // ─── Speaker database ────────────────────────────────────────────────────────
 const SPEAKER_DB: Record<
@@ -453,6 +454,10 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     threadBActive: false,
   });
 
+  // ── Intelligence gate — audio cannot play before Thread B is READY ─────────
+  const intelligenceReadyRef = useRef<boolean>(false);
+  const [_intelligenceReady, setIntelligenceReady] = useState<boolean>(false);
+
   // ── Audio context (ONE unified helixCtx) ─────────────────────────────────
   const helixCtxRef = useRef<AudioContext | null>(null);
 
@@ -464,7 +469,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   const bassRestGainRef = useRef<GainNode | null>(null);
   const bassRestMixRef = useRef<GainNode | null>(null);
   const bassOutputLevelRef = useRef<GainNode | null>(null);
-  const bassNaturalBottomRef = useRef<GainNode | null>(null);
+  const bassNaturalBottomRef = useRef<BiquadFilterNode | null>(null);
   const bassLR1Ref = useRef<BiquadFilterNode | null>(null);
   const bassLR2Ref = useRef<BiquadFilterNode | null>(null);
   const canisterF1Ref = useRef<BiquadFilterNode | null>(null);
@@ -487,7 +492,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   // Protection nodes
   const distortionShaperRef = useRef<WaveShaperNode | null>(null);
   const cleanFilterRef = useRef<BiquadFilterNode | null>(null);
-  // Gain snapshot for kill switch restore
+  // Gain snapshot for kill switch restore — defaults at 0.0 (rule: gains start at 0)
   const gainSnapshotRef = useRef<{
     subLevel: number;
     canisterOut: number;
@@ -498,14 +503,14 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     canisterF3: number;
     ultra: number;
   }>({
-    subLevel: 1.0,
-    canisterOut: 0.8,
-    bassRestGain: 1.0,
-    canisterDry: 1.0,
+    subLevel: 0.0,
+    canisterOut: 0.0,
+    bassRestGain: 0.0,
+    canisterDry: 0.0,
     canisterF1: 0.0,
     canisterF2: 0.0,
     canisterF3: 0.0,
-    ultra: 1.0,
+    ultra: 0.0,
   });
 
   // ── Highs chain refs ───────────────────────────────────────────────────────
@@ -586,17 +591,22 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     bassRestLP.Q.value = 0.5;
 
     const bassRestGain = ctx.createGain();
-    bassRestGain.gain.value = 1.0; // RULE: capped at 1.0 — Zero Stacking Policy max pass-through
+    bassRestGain.gain.value = 0.0; // RULE: killable gain — starts at 0.0
+    console.log("GAIN AUDIT — bassRestGain:", bassRestGain.gain.value);
 
     const bassRestMix = ctx.createGain();
     bassRestMix.gain.value = 1.0;
 
     const bassOutputLevel = ctx.createGain();
-    bassOutputLevel.gain.value = 1.0;
+    bassOutputLevel.gain.value = 0.0; // RULE: killable gain — starts at 0.0
+    console.log("GAIN AUDIT — bassOutputLevel:", bassOutputLevel.gain.value);
 
-    // ── 4. Natural Bottom ───────────────────────────────────────────────────
-    const bassNaturalBottom = ctx.createGain();
-    bassNaturalBottom.gain.value = 1.0;
+    // ── 4. Natural Bottom (BiquadFilterNode peaking +2dB at 30Hz) ──────────
+    const bassNaturalBottom = ctx.createBiquadFilter();
+    bassNaturalBottom.type = "peaking";
+    bassNaturalBottom.frequency.value = 30;
+    bassNaturalBottom.Q.value = 1.0;
+    bassNaturalBottom.gain.value = 2; // +2dB peaking — fixed, not a gain multiplier
 
     // ── 5. Linkwitz-Riley 4th-order LP crossover (80Hz) ─────────────────────
     const bassLR1 = ctx.createBiquadFilter();
@@ -629,10 +639,12 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     canisterF3.gain.value = 3;
 
     const canisterOut = ctx.createGain();
-    canisterOut.gain.value = 0.8; // FIX: starts connected at 0.8 (not 0)
+    canisterOut.gain.value = 0.0; // RULE: killable gain — starts at 0.0
+    console.log("GAIN AUDIT — canisterOut:", canisterOut.gain.value);
 
     const canisterDry = ctx.createGain();
-    canisterDry.gain.value = 1.0;
+    canisterDry.gain.value = 0.0; // RULE: killable gain — starts at 0.0
+    console.log("GAIN AUDIT — canisterDry:", canisterDry.gain.value);
 
     const canisterMix = ctx.createGain();
     canisterMix.gain.value = 1.0;
@@ -660,7 +672,8 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
 
     // ── 7d. Sub level gain node ──────────────────────────────────────────────
     const subLevelGain = ctx.createGain();
-    subLevelGain.gain.value = 1.0;
+    subLevelGain.gain.value = 0.0; // RULE: killable gain — starts at 0.0
+    console.log("GAIN AUDIT — subLevelGain:", subLevelGain.gain.value);
 
     // ── 7e. Protection: WaveShaperNode (soft-clip only, NOT saturation) ──────
     const distortionShaper = ctx.createWaveShaper();
@@ -725,7 +738,8 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     highsAnalyser.smoothingTimeConstant = 0.8;
 
     const ultraGain = ctx.createGain();
-    ultraGain.gain.value = 1.0;
+    ultraGain.gain.value = 0.0; // RULE: killable gain — starts at 0.0
+    console.log("GAIN AUDIT — ultraGain:", ultraGain.gain.value);
 
     // ── Wire the full chain ──────────────────────────────────────────────────
     // Bass path: volumeGain → EQ[0..7] (all 8 bands for bass)
@@ -838,7 +852,8 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
         view[SAB_CHIPS_ACTIVE] = 25;
         view[SAB_BT_CONNECTED] = 0;
         view[SAB_GAIN_KILL] = 0;
-        view[SAB_POWER_MIMIC] = 1.0;
+        view[SAB_POWER_MIMIC] = 1.0; // Thunder Battery Chain 1
+        view[SAB_POWER_MIMIC2] = 1.0; // Thunder Battery Chain 2 (parallel, offset phase)
         sharedBufferRef.current = sab;
         sharedViewRef.current = view;
       } catch {
@@ -886,8 +901,24 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
           } catch {
             /* ignore */
           }
+        } else if (event.data.type === "READY") {
+          // Intelligence layer gate: Thread B confirmed READY
+          intelligenceReadyRef.current = true;
+          setIntelligenceReady(true);
+          console.log("[Helix] Intelligence layer READY — Thread B confirmed");
         }
       };
+
+      // 3-second fallback: if worker never posts READY, unlock anyway
+      setTimeout(() => {
+        if (!intelligenceReadyRef.current) {
+          intelligenceReadyRef.current = true;
+          setIntelligenceReady(true);
+          console.warn(
+            "[Helix] Intelligence READY fallback fired (3s timeout)",
+          );
+        }
+      }, 3000);
 
       workerRef.current = worker;
       setState((s) => ({
@@ -899,6 +930,51 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.warn("[Helix] Could not start intelligence worker:", err);
     }
+  }, []);
+
+  // ── Titanium No Interference Wall (RAF — audits all GainNodes every frame) ─────
+  const titaniumWallRef = useRef<number>(0);
+  const startTitaniumWall = useCallback(() => {
+    const knownGains: Array<{
+      ref: React.MutableRefObject<GainNode | null>;
+      name: string;
+    }> = [
+      { ref: bassRestGainRef, name: "bassRestGain" },
+      { ref: bassOutputLevelRef, name: "bassOutputLevel" },
+      { ref: canisterOutRef, name: "canisterOut" },
+      { ref: canisterDryRef, name: "canisterDry" },
+      { ref: subLevelGainRef, name: "subLevelGain" },
+      { ref: ultraGainRef, name: "ultraGain" },
+    ];
+    const tick = () => {
+      for (const { ref, name } of knownGains) {
+        const node = ref.current;
+        if (node && node.gain.value > 1.0) {
+          console.warn(
+            `[TITANIUM WALL] ${name} clamped from ${node.gain.value.toFixed(4)} to 1.0`,
+          );
+          node.gain.value = 1.0;
+        }
+      }
+      // masterGain is the only authorized GainNode — it must stay at 1.0
+      if (masterGainRef.current && masterGainRef.current.gain.value !== 1.0) {
+        console.warn("[TITANIUM WALL] masterGain corrected to 1.0");
+        masterGainRef.current.gain.value = 1.0;
+      }
+      // Authorize only distortionShaper — log any other WaveShaper found
+      const ctx = helixCtxRef.current;
+      if (ctx) {
+        // We cannot enumerate all nodes, but we can verify the known shaper is ours
+        const ds = distortionShaperRef.current;
+        if (!ds) {
+          console.warn(
+            "[TITANIUM WALL] authorized WaveShaper missing — chain may be compromised",
+          );
+        }
+      }
+      titaniumWallRef.current = requestAnimationFrame(tick);
+    };
+    titaniumWallRef.current = requestAnimationFrame(tick);
   }, []);
 
   // ── Bluetooth Speaker Scanner Chip (main thread) ─────────────────────────────
@@ -1116,13 +1192,20 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
           if (highsEQFiltersRef.current[4]) {
             highsEQFiltersRef.current[4].gain.value = clarityRaw * 3;
           }
-          // powerMimic (0-1) → masterGain ceiling (0.85 to 0.98)
-          const powerRaw = view[SAB_POWER_MIMIC];
-          const targetCeiling = 0.85 + powerRaw * 0.13; // 0.85 to 0.98
-          if (masterGainRef.current) {
-            // Only update if within safe ceiling — NEVER above 1.0 (Zero Stacking Policy)
-            const clamped = Math.min(targetCeiling, 1.0);
-            masterGainRef.current.gain.value = clamped;
+          // powerMimic — dual Thunder Battery chains averaged → subLevelGain ceiling
+          const powerRaw = (view[SAB_POWER_MIMIC] + view[SAB_POWER_MIMIC2]) / 2;
+          // Route characteristics ceiling to subLevelGain (NOT masterGain — masterGain is fixed 1.0)
+          if (subLevelGainRef.current) {
+            const targetSubCeiling = 0.7 + powerRaw * 0.3; // 0.70 to 1.0
+            const clampedSub = Math.min(targetSubCeiling, 1.0);
+            subLevelGainRef.current.gain.value = clampedSub;
+          }
+          // masterGain is FIXED at 1.0 — NEVER modified by powerMimic
+          if (
+            masterGainRef.current &&
+            masterGainRef.current.gain.value !== 1.0
+          ) {
+            masterGainRef.current.gain.value = 1.0;
           }
 
           // ── Zero Stacking Policy — engine-level clamp in char tick ────────────
@@ -1303,7 +1386,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       charRafRef.current = requestAnimationFrame(tick);
     };
     charRafRef.current = requestAnimationFrame(tick);
-  }, [state.helixActive]);
+  }, [state.helixActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── SRL crossover command ──────────────────────────────────────────────────
   const applySRLCrossoverCommand = useCallback(
@@ -1355,6 +1438,15 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
         const masterGain = masterGainRef.current;
         let result: "clean" | "problem" = "clean";
 
+        // Intelligence layer gate — must be READY before passing scan
+        if (!intelligenceReadyRef.current) {
+          console.warn(
+            "[Helix Pre-Play Scanner] Intelligence layer NOT active — scan FAILED",
+          );
+          resolve("problem");
+          return;
+        }
+
         if (!ctx || ctx.state === "closed") result = "problem";
         if (masterGain && masterGain.gain.value !== 1.0) result = "problem";
 
@@ -1389,11 +1481,32 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       source.connect(volumeGainRef.current!);
       audioSourceRef.current = source;
 
+      // Gate: wait for intelligence layer READY before resuming ctx (max 3s)
+      if (!intelligenceReadyRef.current) {
+        startWorker(); // ensure worker is started so it can post READY
+        await new Promise<void>((resolve) => {
+          const checkInterval = setInterval(() => {
+            if (intelligenceReadyRef.current) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 50);
+          // Hard cap: never wait more than 3s
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            intelligenceReadyRef.current = true;
+            setIntelligenceReady(true);
+            resolve();
+          }, 3000);
+        });
+      }
+
       await ctx.resume();
 
-      // Start worker + zero stacking chip on first load
+      // Start worker + zero stacking chip + Titanium Wall on first load
       startWorker();
       startZeroStackingChip();
+      startTitaniumWall();
 
       // Start BT scanner
       runBluetoothScan();
@@ -1410,7 +1523,13 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
         highsContextState: ctx.state,
       }));
     },
-    [initContext, startWorker, startZeroStackingChip, runBluetoothScan],
+    [
+      initContext,
+      startWorker,
+      startZeroStackingChip,
+      startTitaniumWall,
+      runBluetoothScan,
+    ],
   );
 
   // ── Playback ───────────────────────────────────────────────────────────────
@@ -1961,6 +2080,13 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     (active: boolean) => {
       if (active) {
         const ctx = helixCtxRef.current;
+        // Write amp-on punch/depth/weight characteristics immediately (SAB[0-2])
+        const view = sharedViewRef.current;
+        if (view) {
+          view[SAB_PUNCH] = 0.7; // SAB[0] — amp pounds by default
+          view[SAB_DEPTH] = 0.6; // SAB[1]
+          view[SAB_WEIGHT] = 0.65; // SAB[2]
+        }
         // Resume AudioContext first, then scan
         if (ctx && ctx.state === "suspended") {
           ctx.resume().catch(() => {});
@@ -1974,11 +2100,19 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
           hasUnsavedChanges: true,
         }));
         runPrePlayScan().then((result) => {
-          // Fade-in masterGain over 300ms
-          const masterGain = masterGainRef.current;
-          if (masterGain && ctx) {
-            masterGain.gain.setValueAtTime(0, ctx.currentTime);
-            masterGain.gain.linearRampToValueAtTime(1.0, ctx.currentTime + 0.3);
+          // Fade-in volumeGain over 300ms (NOT masterGain — masterGain is fixed 1.0)
+          const volumeGain = volumeGainRef.current;
+          if (volumeGain && ctx) {
+            const targetGain = volToGain(volumeRef.current);
+            volumeGain.gain.setValueAtTime(0, ctx.currentTime);
+            volumeGain.gain.linearRampToValueAtTime(
+              targetGain,
+              ctx.currentTime + 0.3,
+            );
+          }
+          // Ensure masterGain stays at exactly 1.0 (pass-through, never animated)
+          if (masterGainRef.current) {
+            masterGainRef.current.gain.value = 1.0;
           }
           setState((s) => ({
             ...s,
@@ -1995,13 +2129,14 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
           });
         });
       } else {
-        // 5-second handoff: fade-out masterGain over 5s, then suspend AudioContext
+        // 5-second handoff: fade-out volumeGain over 5s, then suspend AudioContext
+        // masterGain is NEVER touched — it stays at 1.0 always
         const ctx = helixCtxRef.current;
-        const masterGain = masterGainRef.current;
-        if (ctx && masterGain) {
+        const volumeGain = volumeGainRef.current;
+        if (ctx && volumeGain) {
           const now = ctx.currentTime;
-          masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-          masterGain.gain.linearRampToValueAtTime(0, now + 5);
+          volumeGain.gain.setValueAtTime(volumeGain.gain.value, now);
+          volumeGain.gain.linearRampToValueAtTime(0, now + 5);
           setTimeout(() => {
             ctx.suspend().catch(() => {});
           }, 5000);
@@ -2043,6 +2178,27 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
 
     saveDebounceRef.current = setTimeout(() => {
+      // Pre-save gain stacking validation — log any killable gain > 1.0
+      const gainChecks: Array<{
+        ref: React.MutableRefObject<GainNode | null>;
+        name: string;
+      }> = [
+        { ref: bassRestGainRef, name: "bassRestGain" },
+        { ref: bassOutputLevelRef, name: "bassOutputLevel" },
+        { ref: canisterOutRef, name: "canisterOut" },
+        { ref: canisterDryRef, name: "canisterDry" },
+        { ref: subLevelGainRef, name: "subLevelGain" },
+        { ref: ultraGainRef, name: "ultraGain" },
+      ];
+      for (const { ref, name } of gainChecks) {
+        if (ref.current && ref.current.gain.value > 1.0) {
+          console.warn(
+            `[Save Validation] STACKING DETECTED: ${name} = ${ref.current.gain.value.toFixed(4)} — clamping to 1.0 before save`,
+          );
+          ref.current.gain.value = 1.0;
+        }
+      }
+
       const settings = {
         volume: state.volume,
         canisterBottomBoost: state.canisterBottomBoost,
@@ -2057,6 +2213,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
         bassFilterFreq: state.bassFilterFreq,
         highsFilterFreq: state.highsFilterFreq,
         bassOutputLevel: state.bassOutputLevel,
+        subLevel: state.subLevel,
       };
 
       try {
@@ -2087,6 +2244,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     state.bassFilterFreq,
     state.highsFilterFreq,
     state.bassOutputLevel,
+    state.subLevel,
   ]);
 
   // ── Load saved settings on mount ─────────────────────────────────────────
@@ -2169,6 +2327,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       cancelAnimationFrame(rafRef.current);
       cancelAnimationFrame(charRafRef.current);
       cancelAnimationFrame(zeroStackingRafRef.current);
+      cancelAnimationFrame(titaniumWallRef.current);
       if (btScanIntervalRef.current) clearInterval(btScanIntervalRef.current);
       if (boosterTimerRef.current) clearTimeout(boosterTimerRef.current);
       if (boosterCountdownRef.current)

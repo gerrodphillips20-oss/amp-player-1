@@ -102,7 +102,7 @@ export default function EQ() {
           border: "1px solid rgba(0,212,255,0.3)",
         }}
       >
-        8 BAND EQ ● ±12dB RANGE ● BASS + MIDS + HIGHS
+        8 BAND EQ ● ±12dB RANGE ● BASS (14–80Hz) + MIDS (250Hz+) + HIGHS
       </div>
 
       {/* Bass Band 1: 14-50Hz */}
@@ -115,7 +115,7 @@ export default function EQ() {
             className="text-xs font-bold uppercase tracking-widest flex items-center"
             style={{ color: "#ff6b35" }}
           >
-            14–50Hz BASS{HD_BADGE}
+            LOW END 14–50Hz{HD_BADGE}
           </div>
           <div
             className="text-xs leading-tight mt-0.5"
@@ -180,7 +180,7 @@ export default function EQ() {
             className="text-xs font-bold uppercase tracking-widest flex items-center"
             style={{ color: "#ff9500" }}
           >
-            14–80Hz BASS{HD_BADGE}
+            LOW END 14–80Hz{HD_BADGE}
           </div>
           <div
             className="text-xs leading-tight mt-0.5"

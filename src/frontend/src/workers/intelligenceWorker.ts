@@ -27,7 +27,8 @@ type WorkerMessage =
   | { type: "INIT"; buffer: SharedArrayBuffer }
   | { type: "SET_VOLUME"; volume: number }
   | { type: "SET_PLAYING"; playing: boolean }
-  | { type: "GAIN_KILL"; active: boolean };
+  | { type: "GAIN_KILL"; active: boolean }
+  | { type: "SET_BOX_TYPE"; boxType: "sealed" | "ported" | "bandpass" };
 
 // ── Worker state ────────────────────────────────────────────────────────────
 let sharedBuffer: SharedArrayBuffer | null = null;
@@ -234,9 +235,53 @@ function chip10_LoadDistributor(view: Float32Array): void {
   view[11] = clamp(variance, 20, 30);
 }
 
-/** CHIP 11 — Thunder Battery Mimic: 1,720,000W characteristics power */
+/** CHIP 11 — Thunder Battery Mimic: 1,720,000W characteristics power (Chain 1 → SAB[6]) */
 function chip11_ThunderBattery(view: Float32Array): void {
   thunderBatteryMimic(view);
+}
+
+/**
+ * Thunder Battery Mimic Chain 2 — parallel to Chain 1, phase offset +4s.
+ * Identical logic to thunderBatteryMimic but uses (t + 4) in sine calculation.
+ * Written to SharedArrayBuffer[14] (SAB_POWER_MIMIC2).
+ */
+function thunderBatteryMimic2(view: Float32Array): void {
+  const gainKillActive = view[13] > 0.5;
+  if (gainKillActive) {
+    view[14] = 0;
+    return;
+  }
+  if (!fuse1Blown && !fuse2Blown) {
+    const t = Date.now() / 1000;
+    // Phase offset: +4 seconds relative to Chain 1
+    const sineOscillation = Math.sin(((t + 4) * 2 * Math.PI) / 8);
+    const powerMimic = 0.915 + sineOscillation * 0.065;
+    view[14] = clamp(powerMimic, 0.85, 0.98);
+  } else if (fuse1Blown && !fuse2Blown) {
+    const t = Date.now() / 1000;
+    view[14] = clamp(
+      0.5 + Math.sin(((t + 4) * 2 * Math.PI) / 8) * 0.03,
+      0.45,
+      0.55,
+    );
+  } else if (!fuse1Blown && fuse2Blown) {
+    const t = Date.now() / 1000;
+    view[14] = clamp(
+      0.5 + Math.sin(((t + 4) * 2 * Math.PI) / 8) * 0.03,
+      0.45,
+      0.55,
+    );
+  } else {
+    view[14] = 0.05;
+  }
+  if (view[14] < 0.1 && !fuse1Blown && !fuse2Blown) {
+    view[14] = 0.85;
+  }
+}
+
+/** CHIP 11b — Thunder Battery Mimic Chain 2 (writes to SAB[14]) */
+function chip11b_ThunderBattery2(view: Float32Array): void {
+  thunderBatteryMimic2(view);
 }
 
 /** CHIP 12 — Signal Authority: enforces signal routing confidence */
@@ -504,6 +549,7 @@ function runTick(): void {
   chip9_ProtectionIntelligence(view);
   chip10_LoadDistributor(view);
   chip11_ThunderBattery(view);
+  chip11b_ThunderBattery2(view);
   chip12_SignalAuthority(view);
   chip13_VDA(view);
   chip14_DeepBassSustain(view);
@@ -564,6 +610,9 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
     // Start the tick loop at ~3ms interval (≈ every 128 samples at 44100Hz)
     setInterval(runTick, 3);
 
+    // Notify main thread: intelligence layer is READY
+    self.postMessage({ type: "READY" });
+
     console.log(
       `[Thread B] Intelligence Worker initialized. Thunder Battery: ${THUNDER_TOTAL_WATTS.toLocaleString()}W characteristics (${THUNDER_TOTAL_RUNS} runs × ${THUNDER_WATTS_PER_RUN.toLocaleString()}W). 25 smart chips online.`,
     );
@@ -577,6 +626,9 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
     if (sharedView) {
       sharedView[13] = msg.active ? 1 : 0;
     }
+  } else if (msg.type === "SET_BOX_TYPE") {
+    chipState.boxType = msg.boxType;
+    console.log(`[Thread B] Box type updated: ${msg.boxType}`);
   }
 };
 

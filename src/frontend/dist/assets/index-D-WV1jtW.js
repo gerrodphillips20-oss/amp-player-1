@@ -18746,7 +18746,7 @@ const eqSliderToDb = (sliderDb, bandIdx) => {
 };
 const volToGain = (v) => Math.max(0.01, Math.min(1, (v - 1) / 99));
 const pctToDb = (pct, minDb, maxDb) => minDb + pct / 100 * (maxDb - minDb);
-const pctToGain = (pct) => pct / 100 * 2;
+const pctToGain = (pct) => pct / 100;
 const SAB_SIZE = 64;
 const SAB_PUNCH = 0;
 const SAB_DEPTH = 1;
@@ -18762,6 +18762,7 @@ const SAB_WATTS = 10;
 const SAB_CHIPS_ACTIVE = 11;
 const SAB_BT_CONNECTED = 12;
 const SAB_GAIN_KILL = 13;
+const SAB_POWER_MIMIC2 = 14;
 const SPEAKER_DB = {
   "QFX PBX": { ohms: 8, watts: 400, boxType: "ported", size: "15-inch" },
   JBL: { ohms: 8, watts: 300, boxType: "sealed", size: "12-inch" },
@@ -18879,6 +18880,8 @@ function AudioEngineProvider({ children }) {
     outputMode: "internal",
     threadBActive: false
   });
+  const intelligenceReadyRef = reactExports.useRef(false);
+  const [_intelligenceReady, setIntelligenceReady] = reactExports.useState(false);
   const helixCtxRef = reactExports.useRef(null);
   const volumeGainRef = reactExports.useRef(null);
   const bassEQFiltersRef = reactExports.useRef([]);
@@ -18906,14 +18909,14 @@ function AudioEngineProvider({ children }) {
   const distortionShaperRef = reactExports.useRef(null);
   const cleanFilterRef = reactExports.useRef(null);
   const gainSnapshotRef = reactExports.useRef({
-    subLevel: 1,
-    canisterOut: 0.8,
-    bassRestGain: 1,
-    canisterDry: 1,
+    subLevel: 0,
+    canisterOut: 0,
+    bassRestGain: 0,
+    canisterDry: 0,
     canisterF1: 0,
     canisterF2: 0,
     canisterF3: 0,
-    ultra: 1
+    ultra: 0
   });
   const highsLR1Ref = reactExports.useRef(null);
   const highsLR2Ref = reactExports.useRef(null);
@@ -18970,13 +18973,18 @@ function AudioEngineProvider({ children }) {
     bassRestLP.frequency.value = 50;
     bassRestLP.Q.value = 0.5;
     const bassRestGain = ctx.createGain();
-    bassRestGain.gain.value = 1;
+    bassRestGain.gain.value = 0;
+    console.log("GAIN AUDIT — bassRestGain:", bassRestGain.gain.value);
     const bassRestMix = ctx.createGain();
     bassRestMix.gain.value = 1;
     const bassOutputLevel = ctx.createGain();
-    bassOutputLevel.gain.value = 1;
-    const bassNaturalBottom = ctx.createGain();
-    bassNaturalBottom.gain.value = 1;
+    bassOutputLevel.gain.value = 0;
+    console.log("GAIN AUDIT — bassOutputLevel:", bassOutputLevel.gain.value);
+    const bassNaturalBottom = ctx.createBiquadFilter();
+    bassNaturalBottom.type = "peaking";
+    bassNaturalBottom.frequency.value = 30;
+    bassNaturalBottom.Q.value = 1;
+    bassNaturalBottom.gain.value = 2;
     const bassLR1 = ctx.createBiquadFilter();
     bassLR1.type = "lowpass";
     bassLR1.frequency.value = 80;
@@ -19001,9 +19009,11 @@ function AudioEngineProvider({ children }) {
     canisterF3.Q.value = 1.5;
     canisterF3.gain.value = 3;
     const canisterOut = ctx.createGain();
-    canisterOut.gain.value = 0.8;
+    canisterOut.gain.value = 0;
+    console.log("GAIN AUDIT — canisterOut:", canisterOut.gain.value);
     const canisterDry = ctx.createGain();
-    canisterDry.gain.value = 1;
+    canisterDry.gain.value = 0;
+    console.log("GAIN AUDIT — canisterDry:", canisterDry.gain.value);
     const canisterMix = ctx.createGain();
     canisterMix.gain.value = 1;
     const safetyBoost = ctx.createBiquadFilter();
@@ -19022,7 +19032,8 @@ function AudioEngineProvider({ children }) {
     lowEndBoostNode.Q.value = 1;
     lowEndBoostNode.gain.value = 0;
     const subLevelGain = ctx.createGain();
-    subLevelGain.gain.value = 1;
+    subLevelGain.gain.value = 0;
+    console.log("GAIN AUDIT — subLevelGain:", subLevelGain.gain.value);
     const distortionShaper = ctx.createWaveShaper();
     distortionShaper.curve = null;
     distortionShaper.oversample = "4x";
@@ -19069,7 +19080,8 @@ function AudioEngineProvider({ children }) {
     highsAnalyser.fftSize = 256;
     highsAnalyser.smoothingTimeConstant = 0.8;
     const ultraGain = ctx.createGain();
-    ultraGain.gain.value = 1;
+    ultraGain.gain.value = 0;
+    console.log("GAIN AUDIT — ultraGain:", ultraGain.gain.value);
     volumeGain.connect(eqFilters[0]);
     for (let i = 0; i < eqFilters.length - 1; i++) {
       eqFilters[i].connect(eqFilters[i + 1]);
@@ -19163,6 +19175,7 @@ function AudioEngineProvider({ children }) {
         view[SAB_BT_CONNECTED] = 0;
         view[SAB_GAIN_KILL] = 0;
         view[SAB_POWER_MIMIC] = 1;
+        view[SAB_POWER_MIMIC2] = 1;
         sharedBufferRef.current = sab;
         sharedViewRef.current = view;
       } catch {
@@ -19178,7 +19191,7 @@ function AudioEngineProvider({ children }) {
       const worker = new Worker(
         new URL(
           /* @vite-ignore */
-          "/assets/intelligenceWorker-CNh36V3O.js",
+          "/assets/intelligenceWorker-MYSRBWlV.js",
           import.meta.url
         ),
         { type: "module" }
@@ -19203,8 +19216,21 @@ function AudioEngineProvider({ children }) {
             );
           } catch {
           }
+        } else if (event.data.type === "READY") {
+          intelligenceReadyRef.current = true;
+          setIntelligenceReady(true);
+          console.log("[Helix] Intelligence layer READY — Thread B confirmed");
         }
       };
+      setTimeout(() => {
+        if (!intelligenceReadyRef.current) {
+          intelligenceReadyRef.current = true;
+          setIntelligenceReady(true);
+          console.warn(
+            "[Helix] Intelligence READY fallback fired (3s timeout)"
+          );
+        }
+      }, 3e3);
       workerRef.current = worker;
       setState((s) => ({
         ...s,
@@ -19215,6 +19241,43 @@ function AudioEngineProvider({ children }) {
     } catch (err) {
       console.warn("[Helix] Could not start intelligence worker:", err);
     }
+  }, []);
+  const titaniumWallRef = reactExports.useRef(0);
+  const startTitaniumWall = reactExports.useCallback(() => {
+    const knownGains = [
+      { ref: bassRestGainRef, name: "bassRestGain" },
+      { ref: bassOutputLevelRef, name: "bassOutputLevel" },
+      { ref: canisterOutRef, name: "canisterOut" },
+      { ref: canisterDryRef, name: "canisterDry" },
+      { ref: subLevelGainRef, name: "subLevelGain" },
+      { ref: ultraGainRef, name: "ultraGain" }
+    ];
+    const tick = () => {
+      for (const { ref, name } of knownGains) {
+        const node = ref.current;
+        if (node && node.gain.value > 1) {
+          console.warn(
+            `[TITANIUM WALL] ${name} clamped from ${node.gain.value.toFixed(4)} to 1.0`
+          );
+          node.gain.value = 1;
+        }
+      }
+      if (masterGainRef.current && masterGainRef.current.gain.value !== 1) {
+        console.warn("[TITANIUM WALL] masterGain corrected to 1.0");
+        masterGainRef.current.gain.value = 1;
+      }
+      const ctx = helixCtxRef.current;
+      if (ctx) {
+        const ds = distortionShaperRef.current;
+        if (!ds) {
+          console.warn(
+            "[TITANIUM WALL] authorized WaveShaper missing — chain may be compromised"
+          );
+        }
+      }
+      titaniumWallRef.current = requestAnimationFrame(tick);
+    };
+    titaniumWallRef.current = requestAnimationFrame(tick);
   }, []);
   const runBluetoothScan = reactExports.useCallback(async () => {
     var _a2;
@@ -19382,11 +19445,14 @@ function AudioEngineProvider({ children }) {
           if (highsEQFiltersRef.current[4]) {
             highsEQFiltersRef.current[4].gain.value = clarityRaw * 3;
           }
-          const powerRaw = view[SAB_POWER_MIMIC];
-          const targetCeiling = 0.85 + powerRaw * 0.13;
-          if (masterGainRef.current) {
-            const clamped = Math.min(targetCeiling, 1);
-            masterGainRef.current.gain.value = clamped;
+          const powerRaw = (view[SAB_POWER_MIMIC] + view[SAB_POWER_MIMIC2]) / 2;
+          if (subLevelGainRef.current) {
+            const targetSubCeiling = 0.7 + powerRaw * 0.3;
+            const clampedSub = Math.min(targetSubCeiling, 1);
+            subLevelGainRef.current.gain.value = clampedSub;
+          }
+          if (masterGainRef.current && masterGainRef.current.gain.value !== 1) {
+            masterGainRef.current.gain.value = 1;
           }
           const zspNodes = [
             { node: subLevelGainRef.current, name: "subLevelGain" },
@@ -19583,6 +19649,13 @@ function AudioEngineProvider({ children }) {
         const ctx = helixCtxRef.current;
         const masterGain = masterGainRef.current;
         let result = "clean";
+        if (!intelligenceReadyRef.current) {
+          console.warn(
+            "[Helix Pre-Play Scanner] Intelligence layer NOT active — scan FAILED"
+          );
+          resolve("problem");
+          return;
+        }
         if (!ctx || ctx.state === "closed") result = "problem";
         if (masterGain && masterGain.gain.value !== 1) result = "problem";
         console.log(`[Helix Pre-Play Scanner] Result: ${result}`);
@@ -19609,9 +19682,27 @@ function AudioEngineProvider({ children }) {
       const source = ctx.createMediaElementSource(audio);
       source.connect(volumeGainRef.current);
       audioSourceRef.current = source;
+      if (!intelligenceReadyRef.current) {
+        startWorker();
+        await new Promise((resolve) => {
+          const checkInterval = setInterval(() => {
+            if (intelligenceReadyRef.current) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 50);
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            intelligenceReadyRef.current = true;
+            setIntelligenceReady(true);
+            resolve();
+          }, 3e3);
+        });
+      }
       await ctx.resume();
       startWorker();
       startZeroStackingChip();
+      startTitaniumWall();
       runBluetoothScan();
       if (!btScanIntervalRef.current) {
         btScanIntervalRef.current = setInterval(runBluetoothScan, 3e4);
@@ -19625,7 +19716,13 @@ function AudioEngineProvider({ children }) {
         highsContextState: ctx.state
       }));
     },
-    [initContext, startWorker, startZeroStackingChip, runBluetoothScan]
+    [
+      initContext,
+      startWorker,
+      startZeroStackingChip,
+      startTitaniumWall,
+      runBluetoothScan
+    ]
   );
   const play = reactExports.useCallback(() => {
     var _a2, _b2;
@@ -20102,6 +20199,12 @@ function AudioEngineProvider({ children }) {
     (active) => {
       if (active) {
         const ctx = helixCtxRef.current;
+        const view = sharedViewRef.current;
+        if (view) {
+          view[SAB_PUNCH] = 0.7;
+          view[SAB_DEPTH] = 0.6;
+          view[SAB_WEIGHT] = 0.65;
+        }
         if (ctx && ctx.state === "suspended") {
           ctx.resume().catch(() => {
           });
@@ -20116,10 +20219,17 @@ function AudioEngineProvider({ children }) {
         }));
         runPrePlayScan().then((result) => {
           var _a2;
-          const masterGain = masterGainRef.current;
-          if (masterGain && ctx) {
-            masterGain.gain.setValueAtTime(0, ctx.currentTime);
-            masterGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.3);
+          const volumeGain = volumeGainRef.current;
+          if (volumeGain && ctx) {
+            const targetGain = volToGain(volumeRef.current);
+            volumeGain.gain.setValueAtTime(0, ctx.currentTime);
+            volumeGain.gain.linearRampToValueAtTime(
+              targetGain,
+              ctx.currentTime + 0.3
+            );
+          }
+          if (masterGainRef.current) {
+            masterGainRef.current.gain.value = 1;
           }
           setState((s) => ({
             ...s,
@@ -20137,11 +20247,11 @@ function AudioEngineProvider({ children }) {
         });
       } else {
         const ctx = helixCtxRef.current;
-        const masterGain = masterGainRef.current;
-        if (ctx && masterGain) {
+        const volumeGain = volumeGainRef.current;
+        if (ctx && volumeGain) {
           const now2 = ctx.currentTime;
-          masterGain.gain.setValueAtTime(masterGain.gain.value, now2);
-          masterGain.gain.linearRampToValueAtTime(0, now2 + 5);
+          volumeGain.gain.setValueAtTime(volumeGain.gain.value, now2);
+          volumeGain.gain.linearRampToValueAtTime(0, now2 + 5);
           setTimeout(() => {
             ctx.suspend().catch(() => {
             });
@@ -20178,6 +20288,22 @@ function AudioEngineProvider({ children }) {
   const saveAllSettings = reactExports.useCallback(() => {
     if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
     saveDebounceRef.current = setTimeout(() => {
+      const gainChecks = [
+        { ref: bassRestGainRef, name: "bassRestGain" },
+        { ref: bassOutputLevelRef, name: "bassOutputLevel" },
+        { ref: canisterOutRef, name: "canisterOut" },
+        { ref: canisterDryRef, name: "canisterDry" },
+        { ref: subLevelGainRef, name: "subLevelGain" },
+        { ref: ultraGainRef, name: "ultraGain" }
+      ];
+      for (const { ref, name } of gainChecks) {
+        if (ref.current && ref.current.gain.value > 1) {
+          console.warn(
+            `[Save Validation] STACKING DETECTED: ${name} = ${ref.current.gain.value.toFixed(4)} — clamping to 1.0 before save`
+          );
+          ref.current.gain.value = 1;
+        }
+      }
       const settings = {
         volume: state.volume,
         canisterBottomBoost: state.canisterBottomBoost,
@@ -20191,7 +20317,8 @@ function AudioEngineProvider({ children }) {
         eqBands: state.eqBands,
         bassFilterFreq: state.bassFilterFreq,
         highsFilterFreq: state.highsFilterFreq,
-        bassOutputLevel: state.bassOutputLevel
+        bassOutputLevel: state.bassOutputLevel,
+        subLevel: state.subLevel
       };
       try {
         localStorage.setItem("ampPlayer1Settings", JSON.stringify(settings));
@@ -20218,7 +20345,8 @@ function AudioEngineProvider({ children }) {
     state.eqBands,
     state.bassFilterFreq,
     state.highsFilterFreq,
-    state.bassOutputLevel
+    state.bassOutputLevel,
+    state.subLevel
   ]);
   reactExports.useEffect(() => {
     try {
@@ -20290,6 +20418,7 @@ function AudioEngineProvider({ children }) {
       cancelAnimationFrame(rafRef.current);
       cancelAnimationFrame(charRafRef.current);
       cancelAnimationFrame(zeroStackingRafRef.current);
+      cancelAnimationFrame(titaniumWallRef.current);
       if (btScanIntervalRef.current) clearInterval(btScanIntervalRef.current);
       if (boosterTimerRef.current) clearTimeout(boosterTimerRef.current);
       if (boosterCountdownRef.current)
@@ -20572,7 +20701,7 @@ function HeadUnit() {
                 {
                   className: "font-display font-bold uppercase text-sm tracking-widest",
                   style: { color: "#00d4ff" },
-                  children: "AMP PLAYER 1"
+                  children: "AMP PLAYER 1 — ASO-V3"
                 }
               )
             ] })
@@ -21082,7 +21211,7 @@ function BassAmp() {
                 border: "1px solid rgba(0,212,255,0.15)"
               },
               children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "SYSTEM POWER" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "SYSTEM POWER — DUAL CHAIN" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx(
                   "div",
                   {
@@ -21091,16 +21220,24 @@ function BassAmp() {
                       color: "#ffd700",
                       textShadow: "0 0 15px rgba(255,215,0,0.5)"
                     },
-                    children: "1,720,000W CHARACTERISTICS"
+                    children: "3,440,000W CHARACTERISTICS"
                   }
                 ),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4 mt-1.5", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "text-xs font-mono font-bold mt-0.5",
+                    style: { color: "rgba(255,215,0,0.8)" },
+                    children: "DUAL THUNDER BATTERY CHAIN"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 mt-1.5 flex-wrap", children: [
                   /* @__PURE__ */ jsxRuntimeExports.jsx(
                     "span",
                     {
                       className: "text-xs font-mono font-bold",
                       style: { color: "#00d4ff" },
-                      children: "CH1: 860,000W"
+                      children: "Chain 1: 1,720,000W"
                     }
                   ),
                   /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs", style: { color: "rgba(0,212,255,0.35)" }, children: "|" }),
@@ -21109,7 +21246,7 @@ function BassAmp() {
                     {
                       className: "text-xs font-mono font-bold",
                       style: { color: "#00d4ff" },
-                      children: "CH2: 860,000W"
+                      children: "Chain 2: 1,720,000W"
                     }
                   )
                 ] })
@@ -21293,7 +21430,15 @@ function BassAmp() {
                   {
                     className: "text-xs font-mono mt-0.5",
                     style: { color: "rgba(255,215,0,0.7)" },
-                    children: "1,720,000W | FUSES: NOMINAL | 688 RUNS"
+                    children: "CHAIN 1: 1,720,000W | 688 RUNS | 2 FUSES"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: "text-xs font-mono",
+                    style: { color: "rgba(255,215,0,0.7)" },
+                    children: "CHAIN 2: 1,720,000W | 688 RUNS | 2 FUSES"
                   }
                 ),
                 /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -21301,7 +21446,7 @@ function BassAmp() {
                   {
                     className: "text-xs font-mono",
                     style: { color: "rgba(255,215,0,0.5)" },
-                    children: "344,000 BATTERIES × 9V × 5W → HELIX"
+                    children: "344,000 BATTERIES × 9V × 5W × 2 CHAINS → HELIX"
                   }
                 )
               ]
@@ -24458,12 +24603,12 @@ function Canister() {
                   className: "text-xs font-bold uppercase tracking-widest",
                   style: { color: "#ff6b35" },
                   children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center", children: [
-                    "SLIDER 1: 14-40Hz BOTTOM NOTE",
+                    "14-40Hz TRACK",
                     HD_BADGE$4
                   ] })
                 }
               ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(255,107,53,0.5)" }, children: "Bottom note lane boost (F1 19Hz + F2 40Hz)" })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(255,107,53,0.5)" }, children: "Wired → canisterF1 (19Hz) + canisterF2 (40Hz)" })
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
               "span",
@@ -24526,12 +24671,12 @@ function Canister() {
                   className: "text-xs font-bold uppercase tracking-widest",
                   style: { color: "#00d4ff" },
                   children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center", children: [
-                    "SLIDER 2: 14-80Hz PUNCH",
+                    "14-80Hz TRACK",
                     HD_BADGE$4
                   ] })
                 }
               ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "Punch lane boost (F3 80Hz peaking)" })
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "Wired → canisterF3 (80Hz) + canisterOut" })
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs(
               "span",
@@ -24626,8 +24771,8 @@ function Canister() {
         className: "space-y-1 pt-1 border-t",
         style: { borderColor: "rgba(255,215,0,0.1)" },
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(255,107,53,0.5)" }, children: "● SLIDER 1 — 14-40Hz bottom note lane" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "● SLIDER 2 — 14-80Hz punch lane" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(255,107,53,0.5)" }, children: "● SLIDER 1 — 14-40Hz Track → canisterF1/F2 nodes" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "● SLIDER 2 — 14-80Hz Track → canisterF3/canisterOut nodes" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(255,215,0,0.4)" }, children: "● BOTH LANES INDEPENDENT — speaker limits respected" })
         ]
       }
@@ -25495,7 +25640,7 @@ function EQ() {
           color: "#00d4ff",
           border: "1px solid rgba(0,212,255,0.3)"
         },
-        children: "8 BAND EQ ● ±12dB RANGE ● BASS + MIDS + HIGHS"
+        children: "8 BAND EQ ● ±12dB RANGE ● BASS (14–80Hz) + MIDS (250Hz+) + HIGHS"
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -25511,7 +25656,7 @@ function EQ() {
                 className: "text-xs font-bold uppercase tracking-widest flex items-center",
                 style: { color: "#ff6b35" },
                 children: [
-                  "14–50Hz BASS",
+                  "LOW END 14–50Hz",
                   HD_BADGE$3
                 ]
               }
@@ -25593,7 +25738,7 @@ function EQ() {
                 className: "text-xs font-bold uppercase tracking-widest flex items-center",
                 style: { color: "#ff9500" },
                 children: [
-                  "14–80Hz BASS",
+                  "LOW END 14–80Hz",
                   HD_BADGE$3
                 ]
               }
@@ -25919,6 +26064,18 @@ function Epicenter() {
         children: "ULTRA → SRL → VOLUME + CROSSOVER → EPICENTER"
       }
     ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        className: "px-2 py-1.5 rounded text-xs",
+        style: {
+          background: "rgba(0,255,120,0.05)",
+          border: "1px solid rgba(0,255,120,0.2)",
+          color: "rgba(0,230,120,0.8)"
+        },
+        children: "✓ ONLY: Bass Restoration · Bass Output Level · Bass Restoration Chip"
+      }
+    ),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-0.5", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs(
         "div",
@@ -26238,6 +26395,38 @@ function GainStructure() {
         children: "ALL 16 GAINS • LIVE ENGINE VALUES"
       }
     ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-1 mb-3", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "px-2 py-1.5 rounded text-xs",
+          style: {
+            background: "rgba(255,60,60,0.07)",
+            border: "1px solid rgba(255,60,60,0.25)",
+            color: "rgba(255,100,100,0.9)"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-bold uppercase", children: "KILLABLE GAINS (8)" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "0.6rem", marginTop: "2px" }, children: "Set to 0.0 simultaneously" })
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "div",
+        {
+          className: "px-2 py-1.5 rounded text-xs",
+          style: {
+            background: "rgba(0,255,120,0.06)",
+            border: "1px solid rgba(0,255,120,0.25)",
+            color: "rgba(0,230,120,0.9)"
+          },
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-bold uppercase", children: "BYPASS GAINS (2)" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: { fontSize: "0.6rem", marginTop: "2px" }, children: "VOLUME + MASTER — pass-through only" })
+          ]
+        }
+      )
+    ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
@@ -26271,7 +26460,13 @@ function GainStructure() {
                   {
                     type: "button",
                     "data-ocid": "gain.kill_switch_button",
-                    onClick: () => engine.setGainKillActive(!gainKillActive),
+                    onClick: () => {
+                      engine.setGainKillActive(!gainKillActive);
+                      console.log(
+                        "[QA] Gain Kill Switch toggled. Kill active:",
+                        !gainKillActive
+                      );
+                    },
                     style: {
                       background: gainKillActive ? "#ff2222" : "#333",
                       color: "#fff",
@@ -26403,6 +26598,33 @@ function GainStructure() {
             )
           ] })
         ]
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        type: "button",
+        "data-ocid": "gain.console_log_button",
+        onClick: () => {
+          console.log("[GAIN QA] All gain node values:");
+          console.log("  gainKillActive:", gainKillActive);
+          console.log("  bassCompReduction (G03):", bassRed.toFixed(4));
+          console.log("  highsCompReduction (G07):", highsRed.toFixed(4));
+          console.log(
+            "  All fixed gains: G01, G02, G04, G05, G06, G08, G09-G12, G14, G15 = 0.0"
+          );
+          console.log(
+            "  Bypass nodes: VOLUME (pass-through), MASTER (fixed 1.0)"
+          );
+        },
+        className: "w-full mb-2 py-1 rounded text-xs font-bold uppercase tracking-widest",
+        style: {
+          background: "rgba(0,212,255,0.08)",
+          border: "1px solid rgba(0,212,255,0.3)",
+          color: "#00d4ff",
+          cursor: "pointer"
+        },
+        children: "🔍 LOG ALL GAIN VALUES TO CONSOLE (QA)"
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 gap-1", children: GAINS2.map((g) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -27980,28 +28202,33 @@ function SignalRouting() {
       arrow: true
     },
     {
-      label: `BASS: BIQUAD LOWPASS ${engine.bassFilterFreq}Hz`,
+      label: "INTELLIGENCE LAYER — 1,000MB CHIP + 25 SMART CHIPS",
+      color: "#00ff88",
+      arrow: true
+    },
+    {
+      label: "DUAL THUNDER BATTERY CHAIN — 3,440,000W CHARACTERISTICS",
+      color: "#ffd700",
+      arrow: true
+    },
+    {
+      label: "HELIX DSP AMP — VIRTUAL DIGITAL ANALOG SIMULATION",
       color: "#00d4ff",
       arrow: true
     },
     {
-      label: `HIGHS: BIQUAD HIGHPASS ${engine.highsFilterFreq}Hz`,
+      label: `BASS PATH: BIQUAD LOWPASS ${engine.bassFilterFreq}Hz`,
+      color: "#ff6b35",
+      arrow: true
+    },
+    {
+      label: `HIGHS PATH: BIQUAD HIGHPASS ${engine.highsFilterFreq}Hz`,
       color: "#00d4ff",
       arrow: true
     },
     {
       label: `SMART RANGE LIMITER (VOL ${engine.volume}/100)`,
       color: "#00ff88",
-      arrow: true
-    },
-    {
-      label: "PROCESSOR CHARACTERISTICS ACTIVE",
-      color: "#00ff88",
-      arrow: true
-    },
-    {
-      label: "HELIX DSP AMP — VIRTUAL DIGITAL ANALOG SIMULATION",
-      color: "#ffd700",
       arrow: true
     },
     { label: "SPEAKERS OUTPUT", color: "#00ff88", arrow: false }
@@ -28016,7 +28243,7 @@ function SignalRouting() {
           color: "#00d4ff",
           border: "1px solid rgba(0,212,255,0.3)"
         },
-        children: "SIGNAL PATH DIAGRAM • 4 GAUGE WIRING"
+        children: "SIGNAL PATH DIAGRAM • ONE AMP: HELIX DSP"
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col gap-0", children: steps.map((step, i) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
@@ -28041,9 +28268,13 @@ function SignalRouting() {
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "div",
       {
-        className: "mt-3 text-xs font-mono",
-        style: { color: "rgba(0,212,255,0.4)" },
-        children: "NO WAVESHAPER • NO PREAMP • NO BASS STACKING • GAINS LOCKED 0.0"
+        className: "mt-3 px-2 py-1.5 rounded text-xs font-mono",
+        style: {
+          background: "rgba(0,0,0,0.3)",
+          border: "1px solid rgba(0,212,255,0.1)",
+          color: "rgba(0,212,255,0.4)"
+        },
+        children: "NO SRS 2022 • NO LEGACY AMPS • NO WAVESHAPER • GAINS LOCKED 0.0"
       }
     )
   ] });
@@ -28116,7 +28347,7 @@ function SmartRangeLimiter() {
             }
           ),
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.5)" }, children: "GERROD'S DESIGN — 1,000W CHARACTERISTICS" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.4)" }, children: "Lives inside Volume + EQ + Sub Bass — direct contact" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-xs", style: { color: "rgba(0,212,255,0.4)" }, children: "Lives inside: VOLUME → EQ → SUB BASS" })
         ]
       }
     ),
@@ -28221,7 +28452,7 @@ function SmartRangeLimiter() {
             {
               className: "text-xs mt-0.5",
               style: { color: "rgba(255,215,0,0.4)" },
-              children: "No volume boost. No gain sliders. Monitor and fix only."
+              children: "No volume boost. No gain sliders. No distortion sliders. Monitors and fixes only."
             }
           )
         ]

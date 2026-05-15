@@ -170,6 +170,18 @@ export default function Epicenter() {
         ULTRA &rarr; SRL &rarr; VOLUME + CROSSOVER &rarr; EPICENTER
       </div>
 
+      {/* Controls Notice */}
+      <div
+        className="px-2 py-1.5 rounded text-xs"
+        style={{
+          background: "rgba(0,255,120,0.05)",
+          border: "1px solid rgba(0,255,120,0.2)",
+          color: "rgba(0,230,120,0.8)",
+        }}
+      >
+        ✓ ONLY: Bass Restoration · Bass Output Level · Bass Restoration Chip
+      </div>
+
       {/* Sliders — Restoration + Output Level ONLY */}
       <div className="space-y-0.5">
         {/* Bass Restoration */}

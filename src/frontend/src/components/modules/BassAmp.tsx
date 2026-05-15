@@ -119,7 +119,7 @@ export default function BassAmp() {
           }}
         >
           <div className="text-xs" style={{ color: "rgba(0,212,255,0.5)" }}>
-            SYSTEM POWER
+            SYSTEM POWER — DUAL CHAIN
           </div>
           <div
             className="text-lg font-black font-mono uppercase tracking-widest mt-0.5"
@@ -128,14 +128,20 @@ export default function BassAmp() {
               textShadow: "0 0 15px rgba(255,215,0,0.5)",
             }}
           >
-            1,720,000W CHARACTERISTICS
+            3,440,000W CHARACTERISTICS
           </div>
-          <div className="flex items-center gap-4 mt-1.5">
+          <div
+            className="text-xs font-mono font-bold mt-0.5"
+            style={{ color: "rgba(255,215,0,0.8)" }}
+          >
+            DUAL THUNDER BATTERY CHAIN
+          </div>
+          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
             <span
               className="text-xs font-mono font-bold"
               style={{ color: "#00d4ff" }}
             >
-              CH1: 860,000W
+              Chain 1: 1,720,000W
             </span>
             <span className="text-xs" style={{ color: "rgba(0,212,255,0.35)" }}>
               |
@@ -144,7 +150,7 @@ export default function BassAmp() {
               className="text-xs font-mono font-bold"
               style={{ color: "#00d4ff" }}
             >
-              CH2: 860,000W
+              Chain 2: 1,720,000W
             </span>
           </div>
         </div>
@@ -299,13 +305,19 @@ export default function BassAmp() {
             className="text-xs font-mono mt-0.5"
             style={{ color: "rgba(255,215,0,0.7)" }}
           >
-            1,720,000W | FUSES: NOMINAL | 688 RUNS
+            CHAIN 1: 1,720,000W | 688 RUNS | 2 FUSES
+          </div>
+          <div
+            className="text-xs font-mono"
+            style={{ color: "rgba(255,215,0,0.7)" }}
+          >
+            CHAIN 2: 1,720,000W | 688 RUNS | 2 FUSES
           </div>
           <div
             className="text-xs font-mono"
             style={{ color: "rgba(255,215,0,0.5)" }}
           >
-            344,000 BATTERIES × 9V × 5W → HELIX
+            344,000 BATTERIES × 9V × 5W × 2 CHAINS → HELIX
           </div>
         </div>
 

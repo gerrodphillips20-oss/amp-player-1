@@ -23,6 +23,7 @@
     sessionClaritySum: 0,
     sessionTicks: 0,
     sessionSaveInterval: 0,
+    boxType: "ported",
     genreBassHeavy: false,
     weakBand: 0,
     thermalLevel: 0,
@@ -135,6 +136,41 @@
   function chip11_ThunderBattery(view) {
     thunderBatteryMimic(view);
   }
+  function thunderBatteryMimic2(view) {
+    const gainKillActive = view[13] > 0.5;
+    if (gainKillActive) {
+      view[14] = 0;
+      return;
+    }
+    if (!fuse1Blown && !fuse2Blown) {
+      const t = Date.now() / 1e3;
+      const sineOscillation = Math.sin((t + 4) * 2 * Math.PI / 8);
+      const powerMimic = 0.915 + sineOscillation * 0.065;
+      view[14] = clamp(powerMimic, 0.85, 0.98);
+    } else if (fuse1Blown && !fuse2Blown) {
+      const t = Date.now() / 1e3;
+      view[14] = clamp(
+        0.5 + Math.sin((t + 4) * 2 * Math.PI / 8) * 0.03,
+        0.45,
+        0.55
+      );
+    } else if (!fuse1Blown && fuse2Blown) {
+      const t = Date.now() / 1e3;
+      view[14] = clamp(
+        0.5 + Math.sin((t + 4) * 2 * Math.PI / 8) * 0.03,
+        0.45,
+        0.55
+      );
+    } else {
+      view[14] = 0.05;
+    }
+    if (view[14] < 0.1 && !fuse1Blown && !fuse2Blown) {
+      view[14] = 0.85;
+    }
+  }
+  function chip11b_ThunderBattery2(view) {
+    thunderBatteryMimic2(view);
+  }
   function chip12_SignalAuthority(view) {
     const powerMimic = view[6];
     const targetAuthority = clamp(powerMimic * 0.9 + volumeNorm * 0.1, 0, 1);
@@ -190,8 +226,14 @@
       view[6] = clamp(maxSafeRatio, 0, 1);
     }
   }
+  function chip18_AcousticSealed(view) {
+    if (chipState.boxType === "sealed") {
+      view[0] = clamp(view[0] * 1.1, 0, 1);
+      view[1] = clamp(view[1] * 0.95, 0, 1);
+    }
+  }
   function chip19_AcousticPorted(view) {
-    {
+    if (chipState.boxType === "ported") {
       view[4] = clamp(view[4] * 1.05 + 0.03, 0, 1);
       view[2] = clamp(view[2] * 1.05, 0, 1);
     }
@@ -322,12 +364,14 @@
     chip9_ProtectionIntelligence(view);
     chip10_LoadDistributor(view);
     chip11_ThunderBattery(view);
+    chip11b_ThunderBattery2(view);
     chip12_SignalAuthority(view);
     chip13_VDA(view);
     chip14_DeepBassSustain(view);
     chip15_BassNoteTracking(view);
     chip16_ZeroStackingMonitor(view);
     chip17_SpeakerWattsGuard(view);
+    chip18_AcousticSealed(view);
     chip19_AcousticPorted(view);
     chip20_RoomReader(view);
     chip21_GenreRecognition(view);
@@ -361,6 +405,7 @@
         sessionBaseline.clarity = clamp(savedLearning.clarity ?? 0, 0, 0.5);
       }
       setInterval(runTick, 3);
+      self.postMessage({ type: "READY" });
       console.log(
         `[Thread B] Intelligence Worker initialized. Thunder Battery: ${THUNDER_TOTAL_WATTS.toLocaleString()}W characteristics (${THUNDER_TOTAL_RUNS} runs × ${THUNDER_WATTS_PER_RUN.toLocaleString()}W). 25 smart chips online.`
       );
@@ -373,6 +418,9 @@
       if (sharedView) {
         sharedView[13] = msg.active ? 1 : 0;
       }
+    } else if (msg.type === "SET_BOX_TYPE") {
+      chipState.boxType = msg.boxType;
+      console.log(`[Thread B] Box type updated: ${msg.boxType}`);
     }
   };
 })();
